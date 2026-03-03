@@ -1,0 +1,180 @@
+use chrono::NaiveDate;
+use yew::prelude::*;
+use crate::components::category_selector::CategorySelector;
+use crate::components::photo_capture::PhotoCapture;
+use crate::models::Category;
+
+#[derive(Clone, PartialEq)]
+pub struct ReceiptFormData {
+    pub amount: String,
+    pub category_id: String,
+    pub notes: String,
+    pub date: String,
+    pub photo: Option<String>,
+}
+
+impl ReceiptFormData {
+    pub fn new(default_category_id: String) -> Self {
+        Self {
+            amount: String::new(),
+            category_id: default_category_id,
+            notes: String::new(),
+            date: chrono::Local::now().date_naive().to_string(),
+            photo: None,
+        }
+    }
+
+    pub fn amount_f64(&self) -> Option<f64> {
+        self.amount.parse::<f64>().ok().filter(|&v| v >= 0.0)
+    }
+
+    pub fn date_naive(&self) -> Option<NaiveDate> {
+        NaiveDate::parse_from_str(&self.date, "%Y-%m-%d").ok()
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.amount_f64().is_some()
+            && self.date_naive().is_some()
+            && !self.category_id.is_empty()
+    }
+}
+
+#[derive(Properties, PartialEq)]
+pub struct ReceiptFormProps {
+    pub data: ReceiptFormData,
+    pub categories: Vec<Category>,
+    pub on_change: Callback<ReceiptFormData>,
+    pub on_submit: Callback<ReceiptFormData>,
+    pub submit_label: String,
+}
+
+#[function_component(ReceiptForm)]
+pub fn receipt_form(props: &ReceiptFormProps) -> Html {
+    let data = props.data.clone();
+
+    let on_amount = {
+        let data = data.clone();
+        let cb = props.on_change.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: web_sys::HtmlInputElement = e.target_unchecked_into();
+            let mut d = data.clone();
+            d.amount = input.value();
+            cb.emit(d);
+        })
+    };
+
+    let on_category = {
+        let data = data.clone();
+        let cb = props.on_change.clone();
+        Callback::from(move |id: String| {
+            let mut d = data.clone();
+            d.category_id = id;
+            cb.emit(d);
+        })
+    };
+
+    let on_notes = {
+        let data = data.clone();
+        let cb = props.on_change.clone();
+        Callback::from(move |e: InputEvent| {
+            let ta: web_sys::HtmlTextAreaElement = e.target_unchecked_into();
+            let mut d = data.clone();
+            d.notes = ta.value();
+            cb.emit(d);
+        })
+    };
+
+    let on_date = {
+        let data = data.clone();
+        let cb = props.on_change.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: web_sys::HtmlInputElement = e.target_unchecked_into();
+            let mut d = data.clone();
+            d.date = input.value();
+            cb.emit(d);
+        })
+    };
+
+    let on_photo = {
+        let data = data.clone();
+        let cb = props.on_change.clone();
+        Callback::from(move |photo: String| {
+            let mut d = data.clone();
+            d.photo = if photo.is_empty() { None } else { Some(photo) };
+            cb.emit(d);
+        })
+    };
+
+    let on_submit = {
+        let data = data.clone();
+        let cb = props.on_submit.clone();
+        Callback::from(move |e: SubmitEvent| {
+            e.prevent_default();
+            if data.is_valid() {
+                cb.emit(data.clone());
+            }
+        })
+    };
+
+    html! {
+        <form class="form" onsubmit={on_submit}>
+            <div class="form-field">
+                <label class="form-label">{"Amount"}</label>
+                <input
+                    class="form-input"
+                    type="number"
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                    value={data.amount.clone()}
+                    oninput={on_amount}
+                    required=true
+                />
+            </div>
+
+            <CategorySelector
+                categories={props.categories.clone()}
+                selected_id={data.category_id.clone()}
+                onchange={on_category}
+            />
+
+            <div class="form-field">
+                <label class="form-label">{"Date"}</label>
+                <input
+                    class="form-input"
+                    type="date"
+                    value={data.date.clone()}
+                    oninput={on_date}
+                    required=true
+                />
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">{"Notes (optional)"}</label>
+                <textarea
+                    class="form-textarea"
+                    placeholder="What was this for?"
+                    value={data.notes.clone()}
+                    oninput={on_notes}
+                    rows="3"
+                />
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">{"Photo (optional)"}</label>
+                <PhotoCapture
+                    on_photo={on_photo}
+                    current_photo={data.photo.clone()}
+                />
+            </div>
+
+            <button
+                type="submit"
+                class="btn btn-primary btn-full"
+                disabled={!data.is_valid()}
+            >
+                { &props.submit_label }
+            </button>
+        </form>
+    }
+}

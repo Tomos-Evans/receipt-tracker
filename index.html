@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#6750A4" />
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Receipts" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <!-- Material Icons -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  <!-- jsPDF for PDF export (cached by SW after first load) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+  <!-- App styles -->
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Roboto', Arial, sans-serif; background: #FAFAFA; color: #1C1B1F; }
+
+    :root {
+      --primary: #6750A4;
+      --on-primary: #FFFFFF;
+      --surface: #FFFBFE;
+      --surface-variant: #E7E0EC;
+      --on-surface: #1C1B1F;
+      --error: #B3261E;
+      --outline: #79747E;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }
+
+    /* Layout */
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .page { display: flex; flex-direction: column; min-height: 100vh; position: relative; }
+    .page-content { flex: 1; padding: 16px; padding-bottom: 88px; overflow-y: auto; max-width: 600px; width: 100%; margin: 0 auto; }
+    .page-center { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+
+    /* App bar */
+    .app-bar { background: var(--primary); color: var(--on-primary); padding: 0 8px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; box-shadow: var(--shadow); }
+    .app-bar-left { display: flex; align-items: center; gap: 8px; }
+    .app-bar-actions { display: flex; align-items: center; gap: 4px; }
+    .app-bar-title { font-size: 20px; font-weight: 500; }
+    .app-logo { font-size: 24px; }
+
+    /* Buttons */
+    .icon-btn { background: none; border: none; color: var(--on-primary); cursor: pointer; padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+    .icon-btn:hover { background: rgba(255,255,255,0.2); }
+    .icon-btn.danger { color: #FFCDD2; }
+
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.2s; text-decoration: none; }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .btn-primary { background: var(--primary); color: var(--on-primary); }
+    .btn-secondary { background: var(--surface-variant); color: var(--on-surface); }
+    .btn-full { width: 100%; justify-content: center; padding: 14px; }
+
+    /* FAB */
+    .fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 16px; background: var(--primary); color: var(--on-primary); border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; z-index: 20; transition: transform 0.2s; }
+    .fab:hover { transform: scale(1.05); }
+
+    /* Cards */
+    .card-list { display: flex; flex-direction: column; gap: 12px; }
+    .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+    .card-content { padding: 16px; }
+
+    /* Trip card */
+    .trip-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .trip-icon { font-size: 36px; color: var(--primary); }
+    .trip-name { font-size: 18px; font-weight: 600; }
+    .trip-dates { font-size: 13px; color: var(--outline); margin-top: 2px; }
+    .trip-card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--surface-variant); padding-top: 10px; }
+    .trip-receipts { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--outline); }
+    .trip-total { font-weight: 600; color: var(--primary); }
+
+    /* Receipt card */
+    .receipt-card { display: flex; align-items: center; padding: 12px 16px; gap: 12px; }
+    .receipt-card-icon .material-icons { font-size: 28px; }
+    .receipt-card-body { flex: 1; min-width: 0; }
+    .receipt-card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+    .receipt-category { font-weight: 500; font-size: 14px; }
+    .receipt-notes { font-size: 13px; color: var(--outline); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .receipt-date { font-size: 12px; color: var(--outline); margin-top: 2px; }
+    .receipt-card-amount { font-weight: 600; white-space: nowrap; }
+    .photo-indicator { color: var(--outline); font-size: 16px !important; }
+
+    /* Trip summary bar */
+    .trip-summary-bar { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; box-shadow: var(--shadow); font-size: 14px; }
+
+    /* Empty state */
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; color: var(--outline); }
+    .empty-icon { font-size: 72px !important; color: var(--surface-variant); margin-bottom: 16px; }
+    .empty-state h2 { font-size: 20px; font-weight: 500; color: var(--on-surface); margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; }
+
+    /* Forms */
+    .form { display: flex; flex-direction: column; gap: 16px; padding: 8px 0; }
+    .form-field { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: 12px; font-weight: 500; color: var(--outline); text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-input, .form-select, .form-textarea { width: 100%; padding: 12px 14px; border: 1.5px solid var(--outline); border-radius: 8px; font-size: 16px; background: var(--surface); color: var(--on-surface); outline: none; transition: border-color 0.2s; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); }
+    .form-error { color: var(--error); font-size: 13px; margin-top: 4px; }
+
+    /* Photo capture */
+    .photo-capture { display: flex; flex-direction: column; gap: 12px; }
+    .photo-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .photo-pick-btn { cursor: pointer; }
+    .photo-preview-wrapper { position: relative; display: inline-block; }
+    .photo-preview { max-width: 100%; max-height: 200px; border-radius: 8px; object-fit: cover; display: block; }
+    .photo-clear-btn { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5) !important; color: white !important; border-radius: 50%; width: 28px; height: 28px; padding: 2px; }
+    .camera-overlay { display: flex; flex-direction: column; gap: 8px; background: #000; border-radius: 8px; overflow: hidden; }
+    .camera-video { width: 100%; max-height: 300px; object-fit: cover; }
+    .camera-controls { display: flex; gap: 8px; padding: 8px; justify-content: center; }
+
+    /* Photo viewer */
+    .photo-viewer { margin-top: 16px; border-radius: var(--radius); overflow: hidden; }
+    .photo-viewer-img { width: 100%; max-height: 400px; object-fit: contain; display: block; background: #f0f0f0; }
+
+    /* Receipt detail */
+    .receipt-detail { display: flex; flex-direction: column; gap: 12px; }
+    .detail-amount { font-size: 36px; font-weight: 700; color: var(--primary); text-align: center; padding: 24px 0; }
+    .detail-row { display: flex; align-items: center; gap: 12px; background: var(--surface); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); font-size: 15px; }
+    .detail-row .material-icons { color: var(--primary); }
+
+    /* Settings */
+    .settings-section { margin-bottom: 32px; }
+    .section-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--primary); }
+    .category-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .category-row { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: 8px; padding: 10px 14px; box-shadow: var(--shadow); }
+    .cat-color-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .cat-name { flex: 1; font-size: 14px; }
+    .add-category-form { background: var(--surface); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px; }
+    .add-category-form h3 { font-size: 15px; font-weight: 500; }
+    .about-text { font-size: 14px; color: var(--outline); }
+
+    /* Loading */
+    .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 16px; }
+    .spinner { width: 40px; height: 40px; border: 4px solid var(--surface-variant); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error display */
+    .error-display { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 12px; padding: 24px; text-align: center; }
+    .error-icon { font-size: 48px !important; color: var(--error); }
+
+    /* Utilities */
+    .small { font-size: 14px !important; }
+    .btn-icon { background: none; border: none; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; }
+  </style>
+  <!-- Trunk: compile Rust to WASM -->
+  <link data-trunk rel="rust" />
+  <!-- Trunk: copy public/ dir as-is -->
+  <link data-trunk rel="copy-dir" href="public/" />
+  <title>Receipt Tracker</title>
+</head>
+<body></body>
+</html>
