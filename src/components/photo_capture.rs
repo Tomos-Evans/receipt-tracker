@@ -4,6 +4,8 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::{HtmlCanvasElement, HtmlInputElement, HtmlVideoElement};
 use yew::prelude::*;
 
+use super::photo_editor::PhotoEditor;
+
 /// Max width in pixels to resize images before storage
 const MAX_WIDTH: f64 = 800.0;
 const JPEG_QUALITY: f64 = 0.7;
@@ -22,6 +24,9 @@ pub enum Msg {
     SnapPhoto,
     CameraError(String),
     CloseCamera,
+    StartEdit(String),
+    PhotoEdited(String),
+    EditCancelled,
 }
 
 pub struct PhotoCapture {
@@ -31,6 +36,7 @@ pub struct PhotoCapture {
     camera_open: bool,
     camera_error: Option<String>,
     stream: Option<web_sys::MediaStream>,
+    pending_edit: Option<String>,
 }
 
 impl Component for PhotoCapture {
@@ -45,6 +51,7 @@ impl Component for PhotoCapture {
             camera_open: false,
             camera_error: None,
             stream: None,
+            pending_edit: None,
         }
     }
 
@@ -59,7 +66,7 @@ impl Component for PhotoCapture {
                     Some(c) => c,
                     None => return false,
                 };
-                let on_photo = ctx.props().on_photo.clone();
+                let link = ctx.link().clone();
 
                 if let Some(files) = input.files()
                     && let Some(file) = files.get(0)
@@ -67,9 +74,8 @@ impl Component for PhotoCapture {
                     let file = gloo_file::File::from(file);
                     spawn_local(async move {
                         if let Ok(data) = gloo_file::futures::read_as_data_url(&file).await {
-                            // Attempt resize; fall back to original on error
                             let result = resize_image_data_url(&data, &canvas).await;
-                            on_photo.emit(result.unwrap_or(data));
+                            link.send_message(Msg::StartEdit(result.unwrap_or(data)));
                         }
                     });
                 }
@@ -132,7 +138,6 @@ impl Component for PhotoCapture {
             }
 
             Msg::GotStream(stream) => {
-                // Attach stream to video element
                 if let Some(video) = self.video_ref.cast::<HtmlVideoElement>() {
                     video.set_src_object(Some(&stream));
                 }
@@ -150,7 +155,6 @@ impl Component for PhotoCapture {
                     Some(v) => v,
                     None => return false,
                 };
-                let on_photo = ctx.props().on_photo.clone();
 
                 let w = video.video_width() as f64;
                 let h = video.video_height() as f64;
@@ -185,8 +189,7 @@ impl Component for PhotoCapture {
                 }
                 self.stream = None;
                 self.camera_open = false;
-
-                on_photo.emit(data_url);
+                self.pending_edit = Some(data_url);
                 true
             }
 
@@ -207,10 +210,37 @@ impl Component for PhotoCapture {
                 }
                 true
             }
+
+            Msg::StartEdit(url) => {
+                self.pending_edit = Some(url);
+                true
+            }
+
+            Msg::PhotoEdited(url) => {
+                self.pending_edit = None;
+                ctx.props().on_photo.emit(url);
+                false
+            }
+
+            Msg::EditCancelled => {
+                self.pending_edit = None;
+                true
+            }
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        // Show editor when a photo is pending edit
+        if let Some(src) = &self.pending_edit {
+            return html! {
+                <PhotoEditor
+                    src={src.clone()}
+                    on_done={ctx.link().callback(Msg::PhotoEdited)}
+                    on_cancel={ctx.link().callback(|_| Msg::EditCancelled)}
+                />
+            };
+        }
+
         let on_file_change = ctx.link().callback(|_: Event| Msg::FileSelected);
         let on_camera = ctx.link().callback(|_: MouseEvent| Msg::CameraCapture);
         let on_snap = ctx.link().callback(|_: MouseEvent| Msg::SnapPhoto);

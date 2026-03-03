@@ -4,6 +4,7 @@ pub mod currency_selector;
 pub mod error_display;
 pub mod fab;
 pub mod photo_capture;
+pub mod photo_editor;
 pub mod photo_viewer;
 pub mod receipt_card;
 pub mod receipt_form;

@@ -144,6 +144,17 @@
     .error-display { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 12px; padding: 24px; text-align: center; }
     .error-icon { font-size: 48px !important; color: var(--error); }
 
+    /* Photo editor */
+    .photo-editor { display: flex; flex-direction: column; background: #111; border-radius: 8px; overflow: hidden; }
+    .editor-toolbar { display: flex; gap: 4px; padding: 8px; background: rgba(0,0,0,0.8); flex-wrap: wrap; align-items: center; }
+    .editor-toolbar .btn-icon { color: #fff; background: rgba(255,255,255,0.1); border-radius: 8px; width: 40px; height: 40px; justify-content: center; }
+    .editor-toolbar .btn-icon.active { background: var(--primary); }
+    .editor-toolbar .divider { width: 1px; height: 24px; background: rgba(255,255,255,0.2); margin: 0 4px; }
+    .editor-canvas-wrapper { background: #1a1a1a; display: flex; align-items: center; justify-content: center; }
+    .editor-canvas { touch-action: none; cursor: crosshair; display: block; width: 100%; height: auto; max-height: 55vh; }
+    .editor-actions { display: flex; gap: 8px; padding: 8px; background: rgba(0,0,0,0.8); justify-content: space-between; align-items: center; flex-wrap: wrap; }
+    .editor-crop-actions { display: flex; gap: 4px; }
+
     /* Utilities */
     .small { font-size: 14px !important; }
     .btn-icon { background: none; border: none; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; }

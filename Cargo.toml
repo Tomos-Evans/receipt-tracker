@@ -39,6 +39,8 @@ features = [
   "Blob", "BlobPropertyBag", "Url",
   "Navigator",
   "Event", "MouseEvent", "InputEvent", "PointerEvent",
+  "TouchEvent", "Touch", "TouchList",
+  "DomRect",
   "ServiceWorkerContainer", "ServiceWorkerRegistration",
   "CssStyleDeclaration",
 ]
