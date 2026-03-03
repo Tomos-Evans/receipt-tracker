@@ -104,7 +104,7 @@ pub fn app() -> Html {
     });
 
     html! {
-        <BrowserRouter>
+        <BrowserRouter basename="/receipt-tracker/">
             <div class="app">
                 if store.loading {
                     <div class="loading-screen">
