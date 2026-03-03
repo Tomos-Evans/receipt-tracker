@@ -130,6 +130,31 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
     let total: f64 = store.current_receipts.iter().map(|r| r.amount).sum();
     let currency = trip.as_ref().map(|t| t.currency.as_str()).unwrap_or("USD");
 
+    // Per-category totals, sorted descending by amount
+    let mut cat_totals: Vec<(String, Option<String>, Option<String>, f64)> = store
+        .categories
+        .iter()
+        .filter_map(|cat| {
+            let cat_total: f64 = store
+                .current_receipts
+                .iter()
+                .filter(|r| r.category_id == cat.id)
+                .map(|r| r.amount)
+                .sum();
+            if cat_total > 0.0 {
+                Some((
+                    cat.name.clone(),
+                    cat.icon.clone(),
+                    cat.color.clone(),
+                    cat_total,
+                ))
+            } else {
+                None
+            }
+        })
+        .collect();
+    cat_totals.sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap_or(std::cmp::Ordering::Equal));
+
     let actions = html! {
         <>
             <button class="icon-btn" onclick={on_export_csv} title="Export CSV">
@@ -156,6 +181,22 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
                     <div class="trip-summary-bar">
                         <span>{ format!("{} – {}", trip.start_date, trip.end_date) }</span>
                         <strong>{ format!("Total: {} {:.2}", currency, total) }</strong>
+                    </div>
+                }
+                if !cat_totals.is_empty() {
+                    <div class="category-breakdown">
+                        <div class="category-breakdown-header">{"By category"}</div>
+                        { for cat_totals.iter().map(|(name, icon, color, amount)| {
+                            let icon_name = icon.as_deref().unwrap_or("label");
+                            let color_style = format!("color:{}", color.as_deref().unwrap_or("#757575"));
+                            html! {
+                                <div class="cat-breakdown-row">
+                                    <span class="material-icons cat-breakdown-icon" style={color_style}>{icon_name}</span>
+                                    <span class="cat-breakdown-name">{name}</span>
+                                    <span class="cat-breakdown-amount">{format!("{} {:.2}", currency, amount)}</span>
+                                </div>
+                            }
+                        })}
                     </div>
                 }
                 if store.current_receipts.is_empty() {

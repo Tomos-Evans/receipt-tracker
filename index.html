@@ -144,6 +144,15 @@
     .error-display { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 12px; padding: 24px; text-align: center; }
     .error-icon { font-size: 48px !important; color: var(--error); }
 
+    /* Category breakdown (trip detail page) */
+    .category-breakdown { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 16px 4px; margin-bottom: 16px; }
+    .category-breakdown-header { font-size: 11px; font-weight: 500; color: var(--outline); text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 4px; }
+    .cat-breakdown-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--surface-variant); }
+    .cat-breakdown-row:last-child { border-bottom: none; }
+    .cat-breakdown-icon { font-size: 20px !important; flex-shrink: 0; }
+    .cat-breakdown-name { flex: 1; font-size: 14px; }
+    .cat-breakdown-amount { font-size: 14px; font-weight: 600; color: var(--primary); }
+
     /* Photo editor */
     .photo-editor { display: flex; flex-direction: column; background: #111; border-radius: 8px; overflow: hidden; }
     .editor-toolbar { display: flex; gap: 4px; padding: 8px; background: rgba(0,0,0,0.8); flex-wrap: wrap; align-items: center; }
