@@ -105,12 +105,21 @@ fn build_jspdf_script(
         lines.push(format!("  doc.text({:?}, 130, y);", truncate(notes, 35)));
         lines.push("  y += 7;".to_string());
 
-        // Embed photo if available
+        // Embed photo if available, preserving original aspect ratio
         if let Some(photo_data) = photos.get(&r.id) {
-            lines.push("  if (y > 210) { doc.addPage(); y = 20; }".to_string());
-            // Inline base64 directly — jsPDF accepts data URIs
             lines.push(format!(
-                "  try {{ doc.addImage({:?}, 'JPEG', 14, y, 60, 45); y += 50; }} catch(e) {{}}",
+                "  try {{\
+                    var _imgData = {:?};\
+                    var _props = doc.getImageProperties(_imgData);\
+                    var _maxW = 182;\
+                    var _maxH = 200;\
+                    var _ratio = Math.min(_maxW / _props.width, _maxH / _props.height);\
+                    var _imgW = _props.width * _ratio;\
+                    var _imgH = _props.height * _ratio;\
+                    if (y + _imgH > 277) {{ doc.addPage(); y = 20; }}\
+                    doc.addImage(_imgData, 'JPEG', 14, y, _imgW, _imgH);\
+                    y += _imgH + 5;\
+                  }} catch(e) {{}}",
                 photo_data
             ));
         }
