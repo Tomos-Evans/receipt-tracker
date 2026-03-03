@@ -1,7 +1,7 @@
-use rexie::{ObjectStore, Index, Rexie};
+use super::categories;
 use crate::error::{AppError, AppResult};
 use crate::models::category::default_categories;
-use super::categories;
+use rexie::{Index, ObjectStore, Rexie};
 
 pub const DB_NAME: &str = "receipt_tracker_db";
 pub const DB_VERSION: u32 = 1;
@@ -33,10 +33,7 @@ pub async fn open_database() -> AppResult<Rexie> {
                 .add_index(Index::new("is_default", "is_default"))
                 .add_index(Index::new("name", "name")),
         )
-        .add_object_store(
-            ObjectStore::new(STORE_PHOTOS)
-                .key_path("receipt_id"),
-        )
+        .add_object_store(ObjectStore::new(STORE_PHOTOS).key_path("receipt_id"))
         .build()
         .await
         .map_err(AppError::from)?;

@@ -8,8 +8,8 @@ use crate::app::Route;
 use crate::components::app_bar::AppBar;
 use crate::components::photo_viewer::PhotoViewer;
 use crate::state::AppStore;
+use crate::storage::photos::{delete_photo, get_photo};
 use crate::storage::receipts::delete_receipt;
-use crate::storage::photos::{get_photo, delete_photo};
 
 #[derive(Properties, PartialEq)]
 pub struct ReceiptDetailPageProps {
@@ -43,12 +43,18 @@ pub fn receipt_detail_page(props: &ReceiptDetailPageProps) -> Html {
         });
     }
 
-    let receipt = store.current_receipts.iter()
+    let receipt = store
+        .current_receipts
+        .iter()
         .find(|r| r.id == receipt_id)
         .cloned();
 
     let category = receipt.as_ref().and_then(|r| {
-        store.categories.iter().find(|c| c.id == r.category_id).cloned()
+        store
+            .categories
+            .iter()
+            .find(|c| c.id == r.category_id)
+            .cloned()
     });
 
     let trip = store.trips.iter().find(|t| t.id == trip_id).cloned();

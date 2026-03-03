@@ -1,13 +1,13 @@
 use wasm_bindgen::prelude::*;
 
 mod app;
-mod error;
-mod models;
-mod storage;
-mod state;
-mod pages;
 mod components;
+mod error;
 mod export;
+mod models;
+mod pages;
+mod state;
+mod storage;
 
 #[wasm_bindgen(start)]
 pub fn main() {

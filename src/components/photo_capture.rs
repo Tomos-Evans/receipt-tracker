@@ -1,7 +1,7 @@
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::spawn_local;
-use web_sys::{HtmlInputElement, HtmlCanvasElement, HtmlVideoElement};
+use web_sys::{HtmlCanvasElement, HtmlInputElement, HtmlVideoElement};
 use yew::prelude::*;
 
 /// Max width in pixels to resize images before storage
@@ -89,32 +89,42 @@ impl Component for PhotoCapture {
                 spawn_local(async move {
                     let window = match web_sys::window() {
                         Some(w) => w,
-                        None => { link.send_message(Msg::CameraError("No window".into())); return; }
+                        None => {
+                            link.send_message(Msg::CameraError("No window".into()));
+                            return;
+                        }
                     };
                     let navigator = window.navigator();
                     match navigator.media_devices() {
                         Ok(devices) => {
                             let constraints = web_sys::MediaStreamConstraints::new();
                             constraints.set_video(&JsValue::from_bool(true));
-                            let promise = match devices.get_user_media_with_constraints(&constraints) {
-                                Ok(p) => p,
-                                Err(e) => {
-                                    link.send_message(Msg::CameraError(format!("{:?}", e)));
-                                    return;
-                                }
-                            };
+                            let promise =
+                                match devices.get_user_media_with_constraints(&constraints) {
+                                    Ok(p) => p,
+                                    Err(e) => {
+                                        link.send_message(Msg::CameraError(format!("{:?}", e)));
+                                        return;
+                                    }
+                                };
                             match wasm_bindgen_futures::JsFuture::from(promise).await {
                                 Ok(stream_val) => {
                                     let stream: web_sys::MediaStream = stream_val.unchecked_into();
                                     link.send_message(Msg::GotStream(stream));
                                 }
                                 Err(e) => {
-                                    link.send_message(Msg::CameraError(format!("Camera denied: {:?}", e)));
+                                    link.send_message(Msg::CameraError(format!(
+                                        "Camera denied: {:?}",
+                                        e
+                                    )));
                                 }
                             }
                         }
                         Err(e) => {
-                            link.send_message(Msg::CameraError(format!("No media devices: {:?}", e)));
+                            link.send_message(Msg::CameraError(format!(
+                                "No media devices: {:?}",
+                                e
+                            )));
                         }
                     }
                 });
@@ -154,9 +164,8 @@ impl Component for PhotoCapture {
 
                 if let Ok(Some(obj)) = canvas.get_context("2d") {
                     let ctx2d: web_sys::CanvasRenderingContext2d = obj.unchecked_into();
-                    let _ = ctx2d.draw_image_with_html_video_element_and_dw_and_dh(
-                        &video, 0.0, 0.0, cw, ch
-                    );
+                    let _ = ctx2d
+                        .draw_image_with_html_video_element_and_dw_and_dh(&video, 0.0, 0.0, cw, ch);
                 }
 
                 let data_url = canvas
@@ -316,9 +325,6 @@ async fn resize_image_data_url(
     }
 
     canvas
-        .to_data_url_with_type_and_encoder_options(
-            "image/jpeg",
-            &JsValue::from_f64(JPEG_QUALITY),
-        )
+        .to_data_url_with_type_and_encoder_options("image/jpeg", &JsValue::from_f64(JPEG_QUALITY))
         .map_err(|e| format!("{:?}", e))
 }

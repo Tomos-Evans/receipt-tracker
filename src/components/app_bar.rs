@@ -1,6 +1,6 @@
+use crate::app::Route;
 use yew::prelude::*;
 use yew_router::prelude::*;
-use crate::app::Route;
 
 #[derive(Properties, PartialEq)]
 pub struct AppBarProps {

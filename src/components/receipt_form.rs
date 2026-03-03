@@ -1,8 +1,8 @@
-use chrono::NaiveDate;
-use yew::prelude::*;
 use crate::components::category_selector::CategorySelector;
 use crate::components::photo_capture::PhotoCapture;
 use crate::models::Category;
+use chrono::NaiveDate;
+use yew::prelude::*;
 
 #[derive(Clone, PartialEq)]
 pub struct ReceiptFormData {
@@ -43,9 +43,7 @@ impl ReceiptFormData {
     }
 
     pub fn is_valid(&self) -> bool {
-        self.amount_f64().is_some()
-            && self.date_naive().is_some()
-            && !self.category_id.is_empty()
+        self.amount_f64().is_some() && self.date_naive().is_some() && !self.category_id.is_empty()
     }
 }
 

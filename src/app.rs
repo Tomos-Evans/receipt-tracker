@@ -4,15 +4,15 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 use yewdux::prelude::*;
 
+use crate::components::error_display::ErrorDisplay;
 use crate::pages::{
-    TripListPage, AddTripPage, TripDetailPage,
-    AddReceiptPage, EditReceiptPage, ReceiptDetailPage, SettingsPage,
+    AddReceiptPage, AddTripPage, EditReceiptPage, ReceiptDetailPage, SettingsPage, TripDetailPage,
+    TripListPage,
 };
 use crate::state::AppStore;
-use crate::storage::db::{open_database, seed_categories};
 use crate::storage::categories::get_all_categories;
+use crate::storage::db::{open_database, seed_categories};
 use crate::storage::trips::get_all_trips;
-use crate::components::error_display::ErrorDisplay;
 
 #[derive(Debug, Clone, PartialEq, Routable)]
 pub enum Route {
@@ -41,8 +41,12 @@ fn switch(route: Route) -> Html {
         Route::AddTrip => html! { <AddTripPage /> },
         Route::TripDetail { id } => html! { <TripDetailPage trip_id={id} /> },
         Route::AddReceipt { id } => html! { <AddReceiptPage trip_id={id} /> },
-        Route::EditReceipt { id, rid } => html! { <EditReceiptPage trip_id={id} receipt_id={rid} /> },
-        Route::ReceiptDetail { id, rid } => html! { <ReceiptDetailPage trip_id={id} receipt_id={rid} /> },
+        Route::EditReceipt { id, rid } => {
+            html! { <EditReceiptPage trip_id={id} receipt_id={rid} /> }
+        }
+        Route::ReceiptDetail { id, rid } => {
+            html! { <ReceiptDetailPage trip_id={id} receipt_id={rid} /> }
+        }
         Route::Settings => html! { <SettingsPage /> },
         Route::NotFound => html! { <div class="page-center"><h2>{"Page not found"}</h2></div> },
     }
@@ -93,7 +97,8 @@ pub fn app() -> Html {
         if let Some(window) = web_sys::window() {
             let navigator = window.navigator();
             if let Ok(sw) = js_sys::Reflect::get(&navigator, &"serviceWorker".into())
-                && !sw.is_undefined() && !sw.is_null()
+                && !sw.is_undefined()
+                && !sw.is_null()
             {
                 let sw_container: web_sys::ServiceWorkerContainer =
                     wasm_bindgen::JsCast::unchecked_into(sw);

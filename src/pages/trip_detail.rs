@@ -9,7 +9,7 @@ use crate::components::app_bar::AppBar;
 use crate::components::fab::Fab;
 use crate::components::receipt_card::ReceiptCard;
 use crate::state::AppStore;
-use crate::storage::receipts::{get_receipts_for_trip, delete_receipts_for_trip};
+use crate::storage::receipts::{delete_receipts_for_trip, get_receipts_for_trip};
 use crate::storage::trips::delete_trip;
 
 #[derive(Properties, PartialEq)]
@@ -87,7 +87,9 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
                 let db = Rc::clone(db);
                 let dispatch = dispatch.clone();
                 spawn_local(async move {
-                    if let Err(e) = crate::export::pdf::export_pdf(&db, &trip, &receipts, &categories).await {
+                    if let Err(e) =
+                        crate::export::pdf::export_pdf(&db, &trip, &receipts, &categories).await
+                    {
                         dispatch.reduce_mut(|s| s.error = Some(e.to_string()));
                     }
                 });

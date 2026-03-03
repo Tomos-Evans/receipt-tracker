@@ -1,6 +1,6 @@
+use crate::components::currency_selector::CurrencySelector;
 use chrono::NaiveDate;
 use yew::prelude::*;
-use crate::components::currency_selector::CurrencySelector;
 
 #[derive(Clone, PartialEq)]
 pub struct TripFormData {

@@ -3,12 +3,12 @@ use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-use yew_router::prelude::*;
 use crate::app::Route;
 use crate::components::app_bar::AppBar;
 use crate::models::Category;
 use crate::state::AppStore;
-use crate::storage::categories::{save_category, delete_category};
+use crate::storage::categories::{delete_category, save_category};
+use yew_router::prelude::*;
 
 #[function_component(SettingsPage)]
 pub fn settings_page() -> Html {
@@ -43,7 +43,9 @@ pub fn settings_page() -> Html {
         Callback::from(move |e: SubmitEvent| {
             e.prevent_default();
             let name = (*new_cat_name).trim().to_string();
-            if name.is_empty() { return; }
+            if name.is_empty() {
+                return;
+            }
             if let Some(db) = &store.db {
                 let db = Rc::clone(db);
                 let dispatch = dispatch.clone();

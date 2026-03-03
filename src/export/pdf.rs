@@ -1,3 +1,6 @@
+use crate::error::{AppError, AppResult};
+use crate::models::{Category, Receipt, Trip};
+use crate::storage::photos::get_photo;
 /// PDF export via jsPDF (loaded from CDN or bundled).
 ///
 /// We use js_sys::eval to invoke jsPDF rather than printpdf because
@@ -7,9 +10,6 @@
 /// The service worker caches the jsPDF script on first load so it's
 /// available offline after the first network access.
 use rexie::Rexie;
-use crate::error::{AppError, AppResult};
-use crate::models::{Trip, Receipt, Category};
-use crate::storage::photos::get_photo;
 
 pub async fn export_pdf(
     db: &Rexie,
@@ -48,18 +48,30 @@ fn build_jspdf_script(
         "{}.pdf",
         trip.name
             .chars()
-            .map(|c| if c.is_alphanumeric() || c == '-' { c } else { '_' })
+            .map(|c| if c.is_alphanumeric() || c == '-' {
+                c
+            } else {
+                '_'
+            })
             .collect::<String>()
     );
 
     let mut lines = Vec::new();
     lines.push("(function() {".to_string());
-    lines.push("  if (typeof jsPDF === 'undefined' && typeof window.jspdf === 'undefined') {".to_string());
-    lines.push("    alert('jsPDF not loaded. Connect to the internet once to cache it.');".to_string());
+    lines.push(
+        "  if (typeof jsPDF === 'undefined' && typeof window.jspdf === 'undefined') {".to_string(),
+    );
+    lines.push(
+        "    alert('jsPDF not loaded. Connect to the internet once to cache it.');".to_string(),
+    );
     lines.push("    return;".to_string());
     lines.push("  }".to_string());
-    lines.push("  var JsPDF = (typeof jsPDF !== 'undefined') ? jsPDF : window.jspdf.jsPDF;".to_string());
-    lines.push("  var doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });".to_string());
+    lines.push(
+        "  var JsPDF = (typeof jsPDF !== 'undefined') ? jsPDF : window.jspdf.jsPDF;".to_string(),
+    );
+    lines.push(
+        "  var doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });".to_string(),
+    );
 
     // Title
     lines.push(format!(
@@ -68,7 +80,10 @@ fn build_jspdf_script(
     ));
     lines.push(format!(
         "  doc.setFontSize(11); doc.text({:?}, 14, 28);",
-        format!("{} — {} to {}", trip.currency, trip.start_date, trip.end_date)
+        format!(
+            "{} — {} to {}",
+            trip.currency, trip.start_date, trip.end_date
+        )
     ));
 
     // Table header
@@ -86,7 +101,8 @@ fn build_jspdf_script(
 
     let mut total = 0.0f64;
     for r in receipts {
-        let cat = categories.iter()
+        let cat = categories
+            .iter()
             .find(|c| c.id == r.category_id)
             .map(|c| c.name.as_str())
             .unwrap_or("Other");
@@ -96,10 +112,7 @@ fn build_jspdf_script(
 
         // New page if near bottom
         lines.push("  if (y > 260) { doc.addPage(); y = 20; }".to_string());
-        lines.push(format!(
-            "  doc.text({:?}, 14, y);",
-            r.date.to_string()
-        ));
+        lines.push(format!("  doc.text({:?}, 14, y);", r.date.to_string()));
         lines.push(format!("  doc.text({:?}, 40, y);", truncate(cat, 25)));
         lines.push(format!("  doc.text({:?}, 100, y);", amount_str));
         lines.push(format!("  doc.text({:?}, 130, y);", truncate(notes, 35)));

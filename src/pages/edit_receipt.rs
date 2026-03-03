@@ -8,7 +8,7 @@ use crate::app::Route;
 use crate::components::app_bar::AppBar;
 use crate::components::receipt_form::{ReceiptForm, ReceiptFormData};
 use crate::state::AppStore;
-use crate::storage::photos::{get_photo, save_photo, delete_photo};
+use crate::storage::photos::{delete_photo, get_photo, save_photo};
 use crate::storage::receipts::save_receipt;
 
 #[derive(Properties, PartialEq)]
@@ -28,7 +28,12 @@ pub fn edit_receipt_page(props: &EditReceiptPageProps) -> Html {
         let nav = navigator.clone();
         let tid = trip_id.clone();
         let rid = receipt_id.clone();
-        Callback::from(move |_| nav.push(&Route::ReceiptDetail { id: tid.clone(), rid: rid.clone() }))
+        Callback::from(move |_| {
+            nav.push(&Route::ReceiptDetail {
+                id: tid.clone(),
+                rid: rid.clone(),
+            })
+        })
     };
 
     // form_data starts as None until the receipt + photo are loaded
@@ -39,7 +44,9 @@ pub fn edit_receipt_page(props: &EditReceiptPageProps) -> Html {
         let receipt_id = receipt_id.clone();
         let db = store.db.clone();
         let form_data = form_data.clone();
-        let receipt = store.current_receipts.iter()
+        let receipt = store
+            .current_receipts
+            .iter()
             .find(|r| r.id == receipt_id)
             .cloned();
 
@@ -83,7 +90,11 @@ pub fn edit_receipt_page(props: &EditReceiptPageProps) -> Html {
             let mut updated = existing;
             updated.amount = data.amount_f64().unwrap_or(updated.amount);
             updated.category_id = data.category_id.clone();
-            updated.notes = if data.notes.is_empty() { None } else { Some(data.notes.clone()) };
+            updated.notes = if data.notes.is_empty() {
+                None
+            } else {
+                Some(data.notes.clone())
+            };
             updated.date = data.date_naive().unwrap_or(updated.date);
 
             let photo = data.photo.clone();
@@ -111,7 +122,11 @@ pub fn edit_receipt_page(props: &EditReceiptPageProps) -> Html {
                 // Update store in-place
                 let updated_clone = updated.clone();
                 dispatch.reduce_mut(|s| {
-                    if let Some(r) = s.current_receipts.iter_mut().find(|r| r.id == updated_clone.id) {
+                    if let Some(r) = s
+                        .current_receipts
+                        .iter_mut()
+                        .find(|r| r.id == updated_clone.id)
+                    {
                         *r = updated_clone;
                     }
                 });

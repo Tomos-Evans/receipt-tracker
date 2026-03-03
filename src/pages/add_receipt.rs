@@ -9,8 +9,8 @@ use crate::components::app_bar::AppBar;
 use crate::components::receipt_form::{ReceiptForm, ReceiptFormData};
 use crate::models::{Receipt, category::CAT_OTHER_ID};
 use crate::state::AppStore;
-use crate::storage::receipts::save_receipt;
 use crate::storage::photos::save_photo;
+use crate::storage::receipts::save_receipt;
 
 #[derive(Properties, PartialEq)]
 pub struct AddReceiptPageProps {
@@ -29,7 +29,8 @@ pub fn add_receipt_page(props: &AddReceiptPageProps) -> Html {
         Callback::from(move |_| nav.push(&Route::TripDetail { id: tid.clone() }))
     };
 
-    let default_cat = store.categories
+    let default_cat = store
+        .categories
         .first()
         .map(|c| c.id.clone())
         .unwrap_or_else(|| CAT_OTHER_ID.to_string());
@@ -60,7 +61,11 @@ pub fn add_receipt_page(props: &AddReceiptPageProps) -> Html {
                 trip_id.clone(),
                 data.amount_f64().unwrap_or(0.0),
                 data.category_id.clone(),
-                if data.notes.is_empty() { None } else { Some(data.notes.clone()) },
+                if data.notes.is_empty() {
+                    None
+                } else {
+                    Some(data.notes.clone())
+                },
                 data.date_naive().unwrap(),
             );
 

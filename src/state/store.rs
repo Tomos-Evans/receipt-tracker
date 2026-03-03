@@ -1,7 +1,7 @@
-use std::rc::Rc;
+use crate::models::{Category, Receipt, Trip};
 use rexie::Rexie;
+use std::rc::Rc;
 use yewdux::prelude::*;
-use crate::models::{Trip, Receipt, Category};
 
 #[derive(Store, Clone, Default)]
 pub struct AppStore {

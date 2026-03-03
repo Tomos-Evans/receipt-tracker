@@ -1,7 +1,7 @@
+use crate::app::Route;
+use crate::models::{Category, Receipt};
 use yew::prelude::*;
 use yew_router::prelude::*;
-use crate::app::Route;
-use crate::models::{Receipt, Category};
 
 #[derive(Properties, PartialEq)]
 pub struct ReceiptCardProps {
@@ -24,13 +24,19 @@ pub fn receipt_card(props: &ReceiptCardProps) -> Html {
         });
     });
 
-    let icon = props.category.as_ref()
+    let icon = props
+        .category
+        .as_ref()
         .and_then(|c| c.icon.as_deref())
         .unwrap_or("receipt");
-    let color = props.category.as_ref()
+    let color = props
+        .category
+        .as_ref()
         .and_then(|c| c.color.as_deref())
         .unwrap_or("#757575");
-    let cat_name = props.category.as_ref()
+    let cat_name = props
+        .category
+        .as_ref()
         .map(|c| c.name.as_str())
         .unwrap_or("Other");
 

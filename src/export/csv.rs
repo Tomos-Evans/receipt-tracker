@@ -1,7 +1,7 @@
+use crate::models::{Category, Receipt, Trip};
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use web_sys::{Blob, BlobPropertyBag, Url};
-use crate::models::{Trip, Receipt, Category};
 
 /// Build a CSV string and trigger a browser download.
 pub fn export_csv(trip: &Trip, receipts: &[Receipt], categories: &[Category]) {
@@ -88,6 +88,12 @@ fn trigger_download(content: &str, mime: &str, filename: &str) {
 
 fn sanitize_filename(name: &str) -> String {
     name.chars()
-        .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect::<String>()
 }

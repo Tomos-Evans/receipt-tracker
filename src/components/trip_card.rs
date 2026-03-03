@@ -1,7 +1,7 @@
-use yew::prelude::*;
-use yew_router::prelude::*;
 use crate::app::Route;
 use crate::models::Trip;
+use yew::prelude::*;
+use yew_router::prelude::*;
 
 #[derive(Properties, PartialEq)]
 pub struct TripCardProps {
@@ -16,7 +16,9 @@ pub fn trip_card(props: &TripCardProps) -> Html {
     let trip_id = props.trip.id.clone();
 
     let onclick = Callback::from(move |_| {
-        navigator.push(&Route::TripDetail { id: trip_id.clone() });
+        navigator.push(&Route::TripDetail {
+            id: trip_id.clone(),
+        });
     });
 
     html! {

@@ -1,5 +1,5 @@
-use yew::prelude::*;
 use crate::models::Category;
+use yew::prelude::*;
 
 #[derive(Properties, PartialEq)]
 pub struct CategorySelectorProps {

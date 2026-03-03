@@ -31,5 +31,4 @@ impl Receipt {
             created_at: Utc::now(),
         }
     }
-
 }
