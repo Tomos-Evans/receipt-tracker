@@ -23,6 +23,11 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
     let navigator = use_navigator().unwrap();
     let trip_id = props.trip_id.clone();
 
+    let on_back = {
+        let nav = navigator.clone();
+        Callback::from(move |_| nav.push(&Route::TripList))
+    };
+
     // Find the current trip
     let trip = store.trips.iter().find(|t| t.id == trip_id).cloned();
 
@@ -141,7 +146,7 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
         <div class="page">
             <AppBar
                 title={trip.as_ref().map(|t| t.name.clone()).unwrap_or_default()}
-                show_back=true
+                on_back={on_back}
                 actions={actions}
             />
             <main class="page-content">

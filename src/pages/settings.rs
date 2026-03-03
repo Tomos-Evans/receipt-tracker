@@ -3,6 +3,8 @@ use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
+use yew_router::prelude::*;
+use crate::app::Route;
 use crate::components::app_bar::AppBar;
 use crate::models::Category;
 use crate::state::AppStore;
@@ -11,7 +13,10 @@ use crate::storage::categories::{save_category, delete_category};
 #[function_component(SettingsPage)]
 pub fn settings_page() -> Html {
     let (store, dispatch) = use_store::<AppStore>();
+    let navigator = use_navigator().unwrap();
     let new_cat_name = use_state(String::new);
+
+    let on_back = Callback::from(move |_| navigator.push(&Route::TripList));
     let new_cat_color = use_state(|| "#6750A4".to_string());
 
     let on_name_input = {
@@ -88,7 +93,7 @@ pub fn settings_page() -> Html {
 
     html! {
         <div class="page">
-            <AppBar title="Settings" show_back=true />
+            <AppBar title="Settings" on_back={on_back} />
             <main class="page-content">
                 <section class="settings-section">
                     <h2 class="section-title">{"Categories"}</h2>

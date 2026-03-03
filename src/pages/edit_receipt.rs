@@ -24,6 +24,13 @@ pub fn edit_receipt_page(props: &EditReceiptPageProps) -> Html {
     let receipt_id = props.receipt_id.clone();
     let trip_id = props.trip_id.clone();
 
+    let on_back = {
+        let nav = navigator.clone();
+        let tid = trip_id.clone();
+        let rid = receipt_id.clone();
+        Callback::from(move |_| nav.push(&Route::ReceiptDetail { id: tid.clone(), rid: rid.clone() }))
+    };
+
     // form_data starts as None until the receipt + photo are loaded
     let form_data: UseStateHandle<Option<ReceiptFormData>> = use_state(|| None);
 
@@ -119,7 +126,7 @@ pub fn edit_receipt_page(props: &EditReceiptPageProps) -> Html {
 
     html! {
         <div class="page">
-            <AppBar title="Edit Receipt" show_back=true />
+            <AppBar title="Edit Receipt" on_back={on_back} />
             <main class="page-content">
                 if let Some(data) = (*form_data).clone() {
                     <ReceiptForm

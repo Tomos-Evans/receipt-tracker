@@ -5,8 +5,9 @@ use crate::app::Route;
 #[derive(Properties, PartialEq)]
 pub struct AppBarProps {
     pub title: String,
+    /// Explicit destination for the back button. None = no back button (show logo instead).
     #[prop_or_default]
-    pub show_back: bool,
+    pub on_back: Option<Callback<MouseEvent>>,
     #[prop_or_default]
     pub actions: Html,
 }
@@ -15,16 +16,11 @@ pub struct AppBarProps {
 pub fn app_bar(props: &AppBarProps) -> Html {
     let navigator = use_navigator().unwrap();
 
-    let on_back = {
-        let navigator = navigator.clone();
-        Callback::from(move |_| navigator.back())
-    };
-
     html! {
         <header class="app-bar">
             <div class="app-bar-left">
-                if props.show_back {
-                    <button class="icon-btn" onclick={on_back} aria-label="Back">
+                if let Some(on_back) = &props.on_back {
+                    <button class="icon-btn" onclick={on_back.clone()} aria-label="Back">
                         <span class="material-icons">{"arrow_back"}</span>
                     </button>
                 } else {

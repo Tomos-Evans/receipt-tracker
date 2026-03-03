@@ -54,6 +54,12 @@ pub fn receipt_detail_page(props: &ReceiptDetailPageProps) -> Html {
     let trip = store.trips.iter().find(|t| t.id == trip_id).cloned();
     let currency = trip.as_ref().map(|t| t.currency.as_str()).unwrap_or("USD");
 
+    let on_back = {
+        let nav = navigator.clone();
+        let tid = trip_id.clone();
+        Callback::from(move |_| nav.push(&Route::TripDetail { id: tid.clone() }))
+    };
+
     let on_edit = {
         let navigator = navigator.clone();
         let trip_id = trip_id.clone();
@@ -110,7 +116,7 @@ pub fn receipt_detail_page(props: &ReceiptDetailPageProps) -> Html {
 
     html! {
         <div class="page">
-            <AppBar title="Receipt" show_back=true actions={actions} />
+            <AppBar title="Receipt" on_back={on_back} actions={actions} />
             <main class="page-content">
                 if let Some(receipt) = &receipt {
                     <div class="receipt-detail">

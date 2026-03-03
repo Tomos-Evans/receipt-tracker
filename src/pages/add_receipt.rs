@@ -23,6 +23,12 @@ pub fn add_receipt_page(props: &AddReceiptPageProps) -> Html {
     let navigator = use_navigator().unwrap();
     let trip_id = props.trip_id.clone();
 
+    let on_back = {
+        let nav = navigator.clone();
+        let tid = trip_id.clone();
+        Callback::from(move |_| nav.push(&Route::TripDetail { id: tid.clone() }))
+    };
+
     let default_cat = store.categories
         .first()
         .map(|c| c.id.clone())
@@ -83,7 +89,7 @@ pub fn add_receipt_page(props: &AddReceiptPageProps) -> Html {
 
     html! {
         <div class="page">
-            <AppBar title="New Receipt" show_back=true />
+            <AppBar title="New Receipt" on_back={on_back} />
             <main class="page-content">
                 <ReceiptForm
                     data={(*form_data).clone()}

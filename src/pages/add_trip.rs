@@ -17,6 +17,11 @@ pub fn add_trip_page() -> Html {
     let navigator = use_navigator().unwrap();
     let form_data = use_state(TripFormData::default);
 
+    let on_back = {
+        let nav = navigator.clone();
+        Callback::from(move |_| nav.push(&Route::TripList))
+    };
+
     let on_change = {
         let form_data = form_data.clone();
         Callback::from(move |data| form_data.set(data))
@@ -57,7 +62,7 @@ pub fn add_trip_page() -> Html {
 
     html! {
         <div class="page">
-            <AppBar title="New Trip" show_back=true />
+            <AppBar title="New Trip" on_back={on_back} />
             <main class="page-content">
                 <TripForm
                     data={(*form_data).clone()}
