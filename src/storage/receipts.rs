@@ -14,6 +14,17 @@ fn from_js(val: JsValue) -> AppResult<Receipt> {
         .map_err(|e| AppError::Serialization(format!("{:?}", e)))
 }
 
+pub async fn get_all_receipts(db: &Rexie) -> AppResult<Vec<Receipt>> {
+    let tx = db
+        .transaction(&[STORE_RECEIPTS], TransactionMode::ReadOnly)
+        .map_err(AppError::from)?;
+    let store = tx.store(STORE_RECEIPTS).map_err(AppError::from)?;
+    let items = store.get_all(None, None).await.map_err(AppError::from)?;
+    tx.done().await.map_err(AppError::from)?;
+
+    items.into_iter().map(from_js).collect()
+}
+
 pub async fn get_receipts_for_trip(db: &Rexie, trip_id: &str) -> AppResult<Vec<Receipt>> {
     let tx = db
         .transaction(&[STORE_RECEIPTS], TransactionMode::ReadOnly)
