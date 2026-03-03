@@ -99,11 +99,7 @@ pub fn settings_page() -> Html {
                     <h2 class="section-title">{"Categories"}</h2>
                     <div class="category-list">
                         { for store.categories.iter().map(|cat| {
-                            let delete_cb = if cat.is_default {
-                                None
-                            } else {
-                                Some(make_delete_cat(cat.id.clone()))
-                            };
+                            let delete_cb = make_delete_cat(cat.id.clone());
                             let color = cat.color.as_deref().unwrap_or("#757575");
                             html! {
                                 <div class="category-row" key={cat.id.clone()}>
@@ -112,11 +108,9 @@ pub fn settings_page() -> Html {
                                         { cat.icon.as_deref().unwrap_or("circle") }
                                     </span>
                                     <span class="cat-name">{ &cat.name }</span>
-                                    if let Some(del) = delete_cb {
-                                        <button class="icon-btn danger" onclick={del}>
-                                            <span class="material-icons">{"delete"}</span>
-                                        </button>
-                                    }
+                                    <button class="icon-btn danger" onclick={delete_cb}>
+                                        <span class="material-icons">{"delete"}</span>
+                                    </button>
                                 </div>
                             }
                         })}
