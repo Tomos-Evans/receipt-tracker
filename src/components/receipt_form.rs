@@ -24,6 +24,16 @@ impl ReceiptFormData {
         }
     }
 
+    pub fn from_receipt(receipt: &crate::models::Receipt, photo: Option<String>) -> Self {
+        Self {
+            amount: format!("{:.2}", receipt.amount),
+            category_id: receipt.category_id.clone(),
+            notes: receipt.notes.clone().unwrap_or_default(),
+            date: receipt.date.to_string(),
+            photo,
+        }
+    }
+
     pub fn amount_f64(&self) -> Option<f64> {
         self.amount.parse::<f64>().ok().filter(|&v| v >= 0.0)
     }

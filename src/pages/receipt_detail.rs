@@ -54,6 +54,18 @@ pub fn receipt_detail_page(props: &ReceiptDetailPageProps) -> Html {
     let trip = store.trips.iter().find(|t| t.id == trip_id).cloned();
     let currency = trip.as_ref().map(|t| t.currency.as_str()).unwrap_or("USD");
 
+    let on_edit = {
+        let navigator = navigator.clone();
+        let trip_id = trip_id.clone();
+        let receipt_id = receipt_id.clone();
+        Callback::from(move |_: MouseEvent| {
+            navigator.push(&Route::EditReceipt {
+                id: trip_id.clone(),
+                rid: receipt_id.clone(),
+            });
+        })
+    };
+
     let on_delete = {
         let store = store.clone();
         let dispatch = dispatch.clone();
@@ -86,9 +98,14 @@ pub fn receipt_detail_page(props: &ReceiptDetailPageProps) -> Html {
     };
 
     let actions = html! {
-        <button class="icon-btn danger" onclick={on_delete} title="Delete Receipt">
-            <span class="material-icons">{"delete"}</span>
-        </button>
+        <>
+            <button class="icon-btn" onclick={on_edit} title="Edit Receipt">
+                <span class="material-icons">{"edit"}</span>
+            </button>
+            <button class="icon-btn danger" onclick={on_delete} title="Delete Receipt">
+                <span class="material-icons">{"delete"}</span>
+            </button>
+        </>
     };
 
     html! {

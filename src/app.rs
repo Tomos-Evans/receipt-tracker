@@ -6,7 +6,7 @@ use yewdux::prelude::*;
 
 use crate::pages::{
     TripListPage, AddTripPage, TripDetailPage,
-    AddReceiptPage, ReceiptDetailPage, SettingsPage,
+    AddReceiptPage, EditReceiptPage, ReceiptDetailPage, SettingsPage,
 };
 use crate::state::AppStore;
 use crate::storage::db::{open_database, seed_categories};
@@ -24,6 +24,8 @@ pub enum Route {
     TripDetail { id: String },
     #[at("/trip/:id/receipt/new")]
     AddReceipt { id: String },
+    #[at("/trip/:id/receipt/:rid/edit")]
+    EditReceipt { id: String, rid: String },
     #[at("/trip/:id/receipt/:rid")]
     ReceiptDetail { id: String, rid: String },
     #[at("/settings")]
@@ -39,6 +41,7 @@ fn switch(route: Route) -> Html {
         Route::AddTrip => html! { <AddTripPage /> },
         Route::TripDetail { id } => html! { <TripDetailPage trip_id={id} /> },
         Route::AddReceipt { id } => html! { <AddReceiptPage trip_id={id} /> },
+        Route::EditReceipt { id, rid } => html! { <EditReceiptPage trip_id={id} receipt_id={rid} /> },
         Route::ReceiptDetail { id, rid } => html! { <ReceiptDetailPage trip_id={id} receipt_id={rid} /> },
         Route::Settings => html! { <SettingsPage /> },
         Route::NotFound => html! { <div class="page-center"><h2>{"Page not found"}</h2></div> },
