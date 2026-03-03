@@ -102,7 +102,7 @@ pub fn app() -> Html {
             {
                 let sw_container: web_sys::ServiceWorkerContainer =
                     wasm_bindgen::JsCast::unchecked_into(sw);
-                let _ = sw_container.register("/sw.js");
+                let _ = sw_container.register("./sw.js");
             }
         }
         || ()

@@ -1,63 +1,71 @@
-const CACHE_NAME = 'receipt-tracker-v1';
+const CACHE_NAME = 'receipt-tracker-v2';
 
-// Files to cache on install (predictable names because filehash = false in Trunk.toml)
+// Derived from the SW registration scope — correct for any subpath deployment
+// e.g. "https://user.github.io/receipt-tracker/" or "http://localhost:8080/"
+const SCOPE = self.registration.scope;
+
 const APP_SHELL = [
-  '/',
-  '/index.html',
-  '/receipt_tracker.js',
-  '/receipt_tracker_bg.wasm',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
+  SCOPE,
+  SCOPE + 'index.html',
+  SCOPE + 'receipt_tracker.js',
+  SCOPE + 'receipt_tracker_bg.wasm',
+  SCOPE + 'manifest.json',
+  SCOPE + 'icons/icon-192.png',
+  SCOPE + 'icons/icon-512.png',
+];
+
+// External resources to pre-cache at install time using no-cors (opaque) mode,
+// matching how the browser loads them (<link stylesheet>, <script defer>).
+const EXTERNAL_PRECACHE = [
+  'https://fonts.googleapis.com/icon?family=Material+Icons',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(APP_SHELL);
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await cache.addAll(APP_SHELL);
+      // Pre-cache CDN resources; don't block install if network is unavailable
+      await Promise.allSettled(
+        EXTERNAL_PRECACHE.map((url) =>
+          fetch(url, { mode: 'no-cors' })
+            .then((res) => cache.put(url, res))
+            .catch(() => {})
+        )
+      );
     }).then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME)
-            .map((key) => caches.delete(key))
-      );
-    }).then(() => self.clients.claim())
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+      )
+    ).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET and cross-origin requests
   if (event.request.method !== 'GET') return;
-  if (!event.request.url.startsWith(self.location.origin)) return;
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
+
       return fetch(event.request).then((response) => {
-        // Cache successful responses for app shell assets
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        // Cache successful same-origin responses and opaque CDN responses
+        if (response.ok || response.type === 'opaque') {
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
         }
         return response;
       }).catch(() => {
-        // Offline fallback: return cached index.html for navigation requests
+        // Offline fallback: serve the app shell for navigation requests
         if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
+          return caches.match(SCOPE + 'index.html');
         }
       });
     })
   );
-});
-
-// Notify clients when a new SW has taken control
-self.addEventListener('controllerchange', () => {
-  self.clients.matchAll().then((clients) => {
-    clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED' }));
-  });
 });
