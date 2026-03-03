@@ -89,12 +89,12 @@ pub fn app() -> Html {
     use_effect_with((), |_| {
         if let Some(window) = web_sys::window() {
             let navigator = window.navigator();
-            if let Ok(sw) = js_sys::Reflect::get(&navigator, &"serviceWorker".into()) {
-                if !sw.is_undefined() && !sw.is_null() {
-                    let sw_container: web_sys::ServiceWorkerContainer =
-                        wasm_bindgen::JsCast::unchecked_into(sw);
-                    let _ = sw_container.register("/sw.js");
-                }
+            if let Ok(sw) = js_sys::Reflect::get(&navigator, &"serviceWorker".into())
+                && !sw.is_undefined() && !sw.is_null()
+            {
+                let sw_container: web_sys::ServiceWorkerContainer =
+                    wasm_bindgen::JsCast::unchecked_into(sw);
+                let _ = sw_container.register("/sw.js");
             }
         }
         || ()

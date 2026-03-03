@@ -4,10 +4,7 @@ use std::fmt;
 pub enum AppError {
     Database(String),
     Serialization(String),
-    NotFound(String),
-    Camera(String),
     Export(String),
-    Unknown(String),
 }
 
 impl fmt::Display for AppError {
@@ -15,10 +12,7 @@ impl fmt::Display for AppError {
         match self {
             AppError::Database(msg) => write!(f, "Database error: {}", msg),
             AppError::Serialization(msg) => write!(f, "Serialization error: {}", msg),
-            AppError::NotFound(msg) => write!(f, "Not found: {}", msg),
-            AppError::Camera(msg) => write!(f, "Camera error: {}", msg),
             AppError::Export(msg) => write!(f, "Export error: {}", msg),
-            AppError::Unknown(msg) => write!(f, "Error: {}", msg),
         }
     }
 }

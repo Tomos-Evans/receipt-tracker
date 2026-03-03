@@ -32,7 +32,4 @@ impl Receipt {
         }
     }
 
-    pub fn formatted_amount(&self, currency: &str) -> String {
-        format!("{} {:.2}", currency, self.amount)
-    }
 }

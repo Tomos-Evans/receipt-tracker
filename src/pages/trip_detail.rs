@@ -76,16 +76,16 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
             let receipts = store.current_receipts.clone();
             let trip = store.trips.iter().find(|t| t.id == trip_id).cloned();
             let categories = store.categories.clone();
-            if let Some(trip) = trip {
-                if let Some(db) = &db {
-                    let db = Rc::clone(db);
-                    let dispatch = dispatch.clone();
-                    spawn_local(async move {
-                        if let Err(e) = crate::export::pdf::export_pdf(&db, &trip, &receipts, &categories).await {
-                            dispatch.reduce_mut(|s| s.error = Some(e.to_string()));
-                        }
-                    });
-                }
+            if let Some(trip) = trip
+                && let Some(db) = &db
+            {
+                let db = Rc::clone(db);
+                let dispatch = dispatch.clone();
+                spawn_local(async move {
+                    if let Err(e) = crate::export::pdf::export_pdf(&db, &trip, &receipts, &categories).await {
+                        dispatch.reduce_mut(|s| s.error = Some(e.to_string()));
+                    }
+                });
             }
         })
     };

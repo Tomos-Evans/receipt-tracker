@@ -57,14 +57,3 @@ pub fn default_categories() -> Vec<Category> {
     ]
 }
 
-pub const DEFAULT_CATEGORIES: &[(&str, &str, &str, &str)] = &[
-    (CAT_FOOD_ID, "Food & Drink", "restaurant", "#E53935"),
-    (CAT_TRANSPORT_ID, "Transport", "directions_transit", "#1E88E5"),
-    (CAT_LODGING_ID, "Lodging", "hotel", "#8E24AA"),
-    (CAT_ENTERTAINMENT_ID, "Entertainment", "theater_comedy", "#F4511E"),
-    (CAT_SHOPPING_ID, "Shopping", "shopping_bag", "#00ACC1"),
-    (CAT_FUEL_ID, "Fuel", "local_gas_station", "#6D4C41"),
-    (CAT_COMMUNICATION_ID, "Communication", "phone", "#43A047"),
-    (CAT_HEALTH_ID, "Health", "local_hospital", "#E91E63"),
-    (CAT_OTHER_ID, "Other", "more_horiz", "#757575"),
-];

@@ -16,7 +16,6 @@ pub struct PhotoCaptureProps {
 
 pub enum Msg {
     FileSelected,
-    GotDataUrl(String),
     ClearPhoto,
     CameraCapture,
     GotStream(web_sys::MediaStream),
@@ -62,23 +61,18 @@ impl Component for PhotoCapture {
                 };
                 let on_photo = ctx.props().on_photo.clone();
 
-                if let Some(files) = input.files() {
-                    if let Some(file) = files.get(0) {
-                        let file = gloo_file::File::from(file);
-                        spawn_local(async move {
-                            if let Ok(data) = gloo_file::futures::read_as_data_url(&file).await {
-                                // Attempt resize; fall back to original on error
-                                let result = resize_image_data_url(&data, &canvas).await;
-                                on_photo.emit(result.unwrap_or(data));
-                            }
-                        });
-                    }
+                if let Some(files) = input.files()
+                    && let Some(file) = files.get(0)
+                {
+                    let file = gloo_file::File::from(file);
+                    spawn_local(async move {
+                        if let Ok(data) = gloo_file::futures::read_as_data_url(&file).await {
+                            // Attempt resize; fall back to original on error
+                            let result = resize_image_data_url(&data, &canvas).await;
+                            on_photo.emit(result.unwrap_or(data));
+                        }
+                    });
                 }
-                false
-            }
-
-            Msg::GotDataUrl(data) => {
-                ctx.props().on_photo.emit(data);
                 false
             }
 
@@ -100,7 +94,7 @@ impl Component for PhotoCapture {
                     let navigator = window.navigator();
                     match navigator.media_devices() {
                         Ok(devices) => {
-                            let mut constraints = web_sys::MediaStreamConstraints::new();
+                            let constraints = web_sys::MediaStreamConstraints::new();
                             constraints.set_video(&JsValue::from_bool(true));
                             let promise = match devices.get_user_media_with_constraints(&constraints) {
                                 Ok(p) => p,

@@ -62,10 +62,10 @@ pub fn add_receipt_page(props: &AddReceiptPageProps) -> Html {
                 match save_receipt(&db, &receipt).await {
                     Ok(()) => {
                         // Save photo if present
-                        if let Some(photo_data) = photo {
-                            if !photo_data.is_empty() {
-                                let _ = save_photo(&db, &receipt.id, photo_data).await;
-                            }
+                        if let Some(photo_data) = photo
+                            && !photo_data.is_empty()
+                        {
+                            let _ = save_photo(&db, &receipt.id, photo_data).await;
                         }
                         let receipt_clone = receipt.clone();
                         dispatch.reduce_mut(|s| {

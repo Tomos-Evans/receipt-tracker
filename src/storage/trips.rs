@@ -30,20 +30,6 @@ pub async fn get_all_trips(db: &Rexie) -> AppResult<Vec<Trip>> {
     Ok(trips)
 }
 
-pub async fn get_trip(db: &Rexie, id: &str) -> AppResult<Trip> {
-    let tx = db
-        .transaction(&[STORE_TRIPS], TransactionMode::ReadOnly)
-        .map_err(AppError::from)?;
-    let store = tx.store(STORE_TRIPS).map_err(AppError::from)?;
-    let val = store.get(JsValue::from_str(id)).await.map_err(AppError::from)?;
-    tx.done().await.map_err(AppError::from)?;
-
-    match val {
-        Some(v) => from_js(v),
-        None => Err(AppError::NotFound(format!("Trip {} not found", id))),
-    }
-}
-
 pub async fn save_trip(db: &Rexie, trip: &Trip) -> AppResult<()> {
     let tx = db
         .transaction(&[STORE_TRIPS], TransactionMode::ReadWrite)

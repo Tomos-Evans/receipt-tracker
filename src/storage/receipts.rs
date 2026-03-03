@@ -34,20 +34,6 @@ pub async fn get_receipts_for_trip(db: &Rexie, trip_id: &str) -> AppResult<Vec<R
     Ok(receipts)
 }
 
-pub async fn get_receipt(db: &Rexie, id: &str) -> AppResult<Receipt> {
-    let tx = db
-        .transaction(&[STORE_RECEIPTS], TransactionMode::ReadOnly)
-        .map_err(AppError::from)?;
-    let store = tx.store(STORE_RECEIPTS).map_err(AppError::from)?;
-    let val = store.get(JsValue::from_str(id)).await.map_err(AppError::from)?;
-    tx.done().await.map_err(AppError::from)?;
-
-    match val {
-        Some(v) => from_js(v),
-        None => Err(AppError::NotFound(format!("Receipt {} not found", id))),
-    }
-}
-
 pub async fn save_receipt(db: &Rexie, receipt: &Receipt) -> AppResult<()> {
     let tx = db
         .transaction(&[STORE_RECEIPTS], TransactionMode::ReadWrite)

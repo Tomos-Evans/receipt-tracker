@@ -7,7 +7,6 @@
 /// The service worker caches the jsPDF script on first load so it's
 /// available offline after the first network access.
 use rexie::Rexie;
-use wasm_bindgen::prelude::*;
 use crate::error::{AppError, AppResult};
 use crate::models::{Trip, Receipt, Category};
 use crate::storage::photos::get_photo;
