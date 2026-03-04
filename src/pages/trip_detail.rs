@@ -20,7 +20,7 @@ pub struct TripDetailPageProps {
 #[function_component(TripDetailPage)]
 pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
     let (store, dispatch) = use_store::<AppStore>();
-    let navigator = use_navigator().unwrap();
+    let navigator = use_navigator().expect("TripDetailPage must be rendered inside a Router");
     let trip_id = props.trip_id.clone();
 
     let on_back = {

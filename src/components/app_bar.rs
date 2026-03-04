@@ -14,7 +14,7 @@ pub struct AppBarProps {
 
 #[function_component(AppBar)]
 pub fn app_bar(props: &AppBarProps) -> Html {
-    let navigator = use_navigator().unwrap();
+    let navigator = use_navigator().expect("AppBar must be rendered inside a Router");
 
     html! {
         <header class="app-bar">

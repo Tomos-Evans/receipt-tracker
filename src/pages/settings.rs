@@ -13,7 +13,7 @@ use yew_router::prelude::*;
 #[function_component(SettingsPage)]
 pub fn settings_page() -> Html {
     let (store, dispatch) = use_store::<AppStore>();
-    let navigator = use_navigator().unwrap();
+    let navigator = use_navigator().expect("SettingsPage must be rendered inside a Router");
     let new_cat_name = use_state(String::new);
 
     let on_back = Callback::from(move |_| navigator.push(&Route::TripList));

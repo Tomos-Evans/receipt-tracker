@@ -12,7 +12,7 @@ pub struct TripCardProps {
 
 #[function_component(TripCard)]
 pub fn trip_card(props: &TripCardProps) -> Html {
-    let navigator = use_navigator().unwrap();
+    let navigator = use_navigator().expect("TripCard must be rendered inside a Router");
     let trip_id = props.trip.id.clone();
 
     let onclick = Callback::from(move |_| {

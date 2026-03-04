@@ -20,7 +20,7 @@ pub struct AddReceiptPageProps {
 #[function_component(AddReceiptPage)]
 pub fn add_receipt_page(props: &AddReceiptPageProps) -> Html {
     let (store, dispatch) = use_store::<AppStore>();
-    let navigator = use_navigator().unwrap();
+    let navigator = use_navigator().expect("AddReceiptPage must be rendered inside a Router");
     let trip_id = props.trip_id.clone();
 
     let on_back = {
@@ -57,6 +57,9 @@ pub fn add_receipt_page(props: &AddReceiptPageProps) -> Html {
             let trip_id = trip_id.clone();
             let photo = data.photo.clone();
 
+            let Some(date) = data.date_naive() else {
+                return;
+            };
             let receipt = Receipt::new(
                 trip_id.clone(),
                 data.amount_f64().unwrap_or(0.0),
@@ -66,7 +69,7 @@ pub fn add_receipt_page(props: &AddReceiptPageProps) -> Html {
                 } else {
                     Some(data.notes.clone())
                 },
-                data.date_naive().unwrap(),
+                date,
             );
 
             spawn_local(async move {

@@ -20,7 +20,7 @@ pub struct EditReceiptPageProps {
 #[function_component(EditReceiptPage)]
 pub fn edit_receipt_page(props: &EditReceiptPageProps) -> Html {
     let (store, dispatch) = use_store::<AppStore>();
-    let navigator = use_navigator().unwrap();
+    let navigator = use_navigator().expect("EditReceiptPage must be rendered inside a Router");
     let receipt_id = props.receipt_id.clone();
     let trip_id = props.trip_id.clone();
 

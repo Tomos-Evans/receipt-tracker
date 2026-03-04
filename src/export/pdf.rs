@@ -36,6 +36,16 @@ pub async fn export_pdf(
     }
 }
 
+/// Returns a JavaScript string literal for `s`, using JSON encoding.
+///
+/// JSON string encoding is a strict subset of JavaScript string literals and
+/// correctly handles all Unicode code points, including characters that
+/// Rust's `{:?}` debug format emits as `\u{XXXX}` (which is Rust-only syntax
+/// and would cause a JS syntax error inside an `eval`'d script).
+fn js_str(s: &str) -> String {
+    serde_json::to_string(s).unwrap_or_else(|_| "\"\"".to_string())
+}
+
 fn build_jspdf_script(
     trip: &Trip,
     receipts: &[Receipt],
@@ -113,22 +123,22 @@ fn build_jspdf_script(
 
     // Header
     lines.push(format!(
-        "  doc.setFontSize(18); doc.setFont(undefined, 'bold'); doc.text({:?}, 14, 20);",
-        trip.name
+        "  doc.setFontSize(18); doc.setFont(undefined, 'bold'); doc.text({}, 14, 20);",
+        js_str(&trip.name)
     ));
     lines.push(format!(
-        "  doc.setFontSize(11); doc.setFont(undefined, 'normal'); doc.text({:?}, 14, 28);",
-        format!(
+        "  doc.setFontSize(11); doc.setFont(undefined, 'normal'); doc.text({}, 14, 28);",
+        js_str(&format!(
             "{} — {} to {}",
             trip.currency, trip.start_date, trip.end_date
-        )
+        ))
     ));
     lines.push(format!(
-        "  doc.setFontSize(10); doc.text({:?}, 14, 34);",
-        format!(
+        "  doc.setFontSize(10); doc.text({}, 14, 34);",
+        js_str(&format!(
             "{} day trip  •  Grand total: {} {:.2}",
             trip_days as i64, trip.currency, grand_total
-        )
+        ))
     ));
     lines.push("  var y = 44;".to_string());
 
@@ -153,23 +163,26 @@ fn build_jspdf_script(
 
         // Date heading
         lines.push("  doc.setFont(undefined, 'bold');".to_string());
-        lines.push(format!("  doc.text({:?}, 14, y); y += 7;", display_date));
+        lines.push(format!(
+            "  doc.text({}, 14, y); y += 7;",
+            js_str(&display_date)
+        ));
 
         // One row per category
         lines.push("  doc.setFont(undefined, 'normal');".to_string());
         for (cat_name, amount) in &day_cats {
             lines.push(format!(
-                "  doc.text({:?}, 22, y); doc.text({:?}, 130, y); y += 6;",
-                truncate(cat_name, 30),
-                format!("{} {:.2}", trip.currency, amount)
+                "  doc.text({}, 22, y); doc.text({}, 130, y); y += 6;",
+                js_str(&truncate(cat_name, 30)),
+                js_str(&format!("{} {:.2}", trip.currency, amount))
             ));
         }
 
         // Day total
         lines.push("  doc.setFont(undefined, 'bold');".to_string());
         lines.push(format!(
-            "  doc.text('Day total', 22, y); doc.text({:?}, 130, y); y += 10;",
-            format!("{} {:.2}", trip.currency, day_total)
+            "  doc.text('Day total', 22, y); doc.text({}, 130, y); y += 10;",
+            js_str(&format!("{} {:.2}", trip.currency, day_total))
         ));
         lines.push("  doc.setFont(undefined, 'normal');".to_string());
     }
@@ -185,10 +198,13 @@ fn build_jspdf_script(
         // Column headers
         lines.push("  doc.setFontSize(10);".to_string());
         lines.push("  doc.text('Category', 14, y);".to_string());
-        lines.push(format!("  doc.text('Total ({})', 115, y);", trip.currency));
         lines.push(format!(
-            "  doc.text('Avg / day ({})', 157, y);",
-            trip.currency
+            "  doc.text({}, 115, y);",
+            js_str(&format!("Total ({})", trip.currency))
+        ));
+        lines.push(format!(
+            "  doc.text({}, 157, y);",
+            js_str(&format!("Avg / day ({})", trip.currency))
         ));
         lines.push("  doc.setFont(undefined, 'normal');".to_string());
         lines.push("  y += 4; doc.line(14, y, 196, y); y += 6;".to_string());
@@ -197,10 +213,10 @@ fn build_jspdf_script(
             let per_day = cat_total / trip_days;
             lines.push("  if (y > 270) { doc.addPage(); y = 20; }".to_string());
             lines.push(format!(
-                "  doc.text({:?}, 14, y); doc.text({:?}, 115, y); doc.text({:?}, 157, y); y += 7;",
-                truncate(name, 32),
-                format!("{:.2}", cat_total),
-                format!("{:.2}", per_day)
+                "  doc.text({}, 14, y); doc.text({}, 115, y); doc.text({}, 157, y); y += 7;",
+                js_str(&truncate(name, 32)),
+                js_str(&format!("{:.2}", cat_total)),
+                js_str(&format!("{:.2}", per_day))
             ));
         }
 
@@ -220,8 +236,8 @@ fn build_jspdf_script(
 
     // Page heading
     lines.push(format!(
-        "  doc.setFont(undefined, 'bold'); doc.setFontSize(14); doc.text({:?}, 14, y); y += 10;",
-        format!("{} — Receipt Detail", trip.name)
+        "  doc.setFont(undefined, 'bold'); doc.setFontSize(14); doc.text({}, 14, y); y += 10;",
+        js_str(&format!("{} — Receipt Detail", trip.name))
     ));
 
     // Table header
@@ -245,17 +261,26 @@ fn build_jspdf_script(
         total += r.amount;
 
         lines.push("  if (y > 260) { doc.addPage(); y = 20; }".to_string());
-        lines.push(format!("  doc.text({:?}, 14, y);", r.date.to_string()));
-        lines.push(format!("  doc.text({:?}, 40, y);", truncate(cat, 25)));
-        lines.push(format!("  doc.text({:?}, 100, y);", amount_str));
-        lines.push(format!("  doc.text({:?}, 130, y);", truncate(notes, 35)));
+        lines.push(format!(
+            "  doc.text({}, 14, y);",
+            js_str(&r.date.to_string())
+        ));
+        lines.push(format!(
+            "  doc.text({}, 40, y);",
+            js_str(&truncate(cat, 25))
+        ));
+        lines.push(format!("  doc.text({}, 100, y);", js_str(&amount_str)));
+        lines.push(format!(
+            "  doc.text({}, 130, y);",
+            js_str(&truncate(notes, 35))
+        ));
         lines.push("  y += 7;".to_string());
 
         // Embed photo if available, preserving original aspect ratio
         if let Some(photo_data) = photos.get(&r.id) {
             lines.push(format!(
                 "  try {{\
-                    var _imgData = {:?};\
+                    var _imgData = {};\
                     var _props = doc.getImageProperties(_imgData);\
                     var _maxW = 182; var _maxH = 200;\
                     var _ratio = Math.min(_maxW / _props.width, _maxH / _props.height);\
@@ -265,7 +290,7 @@ fn build_jspdf_script(
                     doc.addImage(_imgData, 'JPEG', 14, y, _imgW, _imgH);\
                     y += _imgH + 5;\
                   }} catch(e) {{}}",
-                photo_data
+                js_str(photo_data)
             ));
         }
     }
@@ -275,12 +300,12 @@ fn build_jspdf_script(
     lines.push("  y += 2; doc.line(14, y, 196, y); y += 6;".to_string());
     lines.push("  doc.setFont(undefined, 'bold');".to_string());
     lines.push(format!(
-        "  doc.text('Total: {} {:.2}', 100, y);",
-        trip.currency, total
+        "  doc.text({}, 100, y);",
+        js_str(&format!("Total: {} {:.2}", trip.currency, total))
     ));
     lines.push("  doc.setFont(undefined, 'normal');".to_string());
 
-    lines.push(format!("  doc.save({:?});", filename));
+    lines.push(format!("  doc.save({});", js_str(&filename)));
     lines.push("})();".to_string());
 
     lines.join("\n")

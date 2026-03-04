@@ -20,7 +20,7 @@ pub struct ReceiptDetailPageProps {
 #[function_component(ReceiptDetailPage)]
 pub fn receipt_detail_page(props: &ReceiptDetailPageProps) -> Html {
     let (store, dispatch) = use_store::<AppStore>();
-    let navigator = use_navigator().unwrap();
+    let navigator = use_navigator().expect("ReceiptDetailPage must be rendered inside a Router");
     let receipt_id = props.receipt_id.clone();
     let trip_id = props.trip_id.clone();
 

@@ -14,7 +14,7 @@ use crate::storage::trips::save_trip;
 #[function_component(AddTripPage)]
 pub fn add_trip_page() -> Html {
     let (store, dispatch) = use_store::<AppStore>();
-    let navigator = use_navigator().unwrap();
+    let navigator = use_navigator().expect("AddTripPage must be rendered inside a Router");
     let form_data = use_state(TripFormData::default);
 
     let on_back = {
@@ -38,12 +38,10 @@ pub fn add_trip_page() -> Html {
             };
             let dispatch = dispatch.clone();
             let navigator = navigator.clone();
-            let trip = Trip::new(
-                data.name.clone(),
-                data.currency.clone(),
-                data.start_naive().unwrap(),
-                data.end_naive().unwrap(),
-            );
+            let (Some(start), Some(end)) = (data.start_naive(), data.end_naive()) else {
+                return;
+            };
+            let trip = Trip::new(data.name.clone(), data.currency.clone(), start, end);
 
             spawn_local(async move {
                 match save_trip(&db, &trip).await {

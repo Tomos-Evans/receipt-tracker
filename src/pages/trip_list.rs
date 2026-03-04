@@ -17,7 +17,7 @@ type TripSummaries = HashMap<String, (usize, f64)>;
 #[function_component(TripListPage)]
 pub fn trip_list_page() -> Html {
     let (store, _) = use_store::<AppStore>();
-    let navigator = use_navigator().unwrap();
+    let navigator = use_navigator().expect("TripListPage must be rendered inside a Router");
     let summaries: UseStateHandle<TripSummaries> = use_state(HashMap::new);
 
     // Load receipt summaries whenever the DB is ready or trips change
