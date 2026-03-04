@@ -66,3 +66,74 @@ pub fn default_categories() -> Vec<Category> {
         Category::default_category(CAT_OTHER_ID, "Other", "more_horiz", "#757575"),
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wasm_bindgen_test::*;
+
+    wasm_bindgen_test_configure!(run_in_browser);
+
+    /// There are exactly 9 built-in categories. Accidentally adding or removing
+    /// one would silently change what gets seeded into new users' databases.
+    #[wasm_bindgen_test]
+    fn default_categories_count_is_nine() {
+        assert_eq!(default_categories().len(), 9);
+    }
+
+    /// Every default category must carry the `is_default` flag so the storage
+    /// layer can sort them above custom categories in the UI.
+    #[wasm_bindgen_test]
+    fn all_defaults_are_flagged_is_default() {
+        for cat in default_categories() {
+            assert!(cat.is_default, "'{}'  missing is_default flag", cat.name);
+        }
+    }
+
+    /// Every default category has an icon and a colour. The UI renders both
+    /// and will look broken if either is absent.
+    #[wasm_bindgen_test]
+    fn all_defaults_have_icon_and_color() {
+        for cat in default_categories() {
+            assert!(cat.icon.is_some(), "'{}' missing icon", cat.name);
+            assert!(cat.color.is_some(), "'{}' missing color", cat.name);
+        }
+    }
+
+    /// The IDs are hardcoded constants used by storage queries. If a constant
+    /// drifts out of sync with the list, seeded rows can never be matched.
+    #[wasm_bindgen_test]
+    fn default_category_ids_match_constants() {
+        let cats = default_categories();
+        let ids: Vec<&str> = cats.iter().map(|c| c.id.as_str()).collect();
+        for expected in [
+            CAT_FOOD_ID,
+            CAT_TRANSPORT_ID,
+            CAT_LODGING_ID,
+            CAT_ENTERTAINMENT_ID,
+            CAT_SHOPPING_ID,
+            CAT_FUEL_ID,
+            CAT_COMMUNICATION_ID,
+            CAT_HEALTH_ID,
+            CAT_OTHER_ID,
+        ] {
+            assert!(ids.contains(&expected), "missing constant ID {expected}");
+        }
+    }
+
+    /// No two default categories share an ID. A duplicate would silently
+    /// overwrite a row in IndexedDB during seeding.
+    #[wasm_bindgen_test]
+    fn default_category_ids_are_unique() {
+        let cats = default_categories();
+        let mut ids: Vec<&str> = cats.iter().map(|c| c.id.as_str()).collect();
+        ids.sort_unstable();
+        let original_len = ids.len();
+        ids.dedup();
+        assert_eq!(
+            ids.len(),
+            original_len,
+            "duplicate IDs in default_categories()"
+        );
+    }
+}

@@ -17,6 +17,9 @@ cargo check --target wasm32-unknown-unknown
 # Format, then lint (run both after any code change)
 cargo fmt
 cargo clippy --target wasm32-unknown-unknown
+
+# To run tests using headless firefox
+wasm-pack test --headless --firefox
 ```
 
 `cargo clippy` must run after every edit — fix all warnings before finishing.

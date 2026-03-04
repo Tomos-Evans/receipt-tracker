@@ -97,3 +97,44 @@ fn sanitize_filename(name: &str) -> String {
         })
         .collect::<String>()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::sanitize_filename;
+    use wasm_bindgen_test::*;
+
+    wasm_bindgen_test_configure!(run_in_browser);
+
+    // ── sanitize_filename ─────────────────────────────────────────────────────
+
+    /// Spaces and punctuation are replaced so the filename is safe on every OS.
+    #[wasm_bindgen_test]
+    fn sanitize_replaces_spaces_and_punctuation() {
+        assert_eq!(sanitize_filename("Paris Trip!"), "Paris_Trip_");
+    }
+
+    /// Alphanumeric characters, hyphens, and underscores pass through unchanged.
+    #[wasm_bindgen_test]
+    fn sanitize_keeps_safe_chars() {
+        assert_eq!(sanitize_filename("my-trip_2024"), "my-trip_2024");
+    }
+
+    /// Slashes and dots are common in user-typed names and must be sanitised.
+    #[wasm_bindgen_test]
+    fn sanitize_replaces_slashes_and_dots() {
+        assert_eq!(sanitize_filename("Trip/2024.csv"), "Trip_2024_csv");
+    }
+
+    /// Empty input produces empty output — no panic on zero-length strings.
+    #[wasm_bindgen_test]
+    fn sanitize_empty_string() {
+        assert_eq!(sanitize_filename(""), "");
+    }
+
+    /// Unicode letters are alphanumeric per `char::is_alphanumeric` and pass
+    /// through unchanged, so non-ASCII trip names stay readable.
+    #[wasm_bindgen_test]
+    fn sanitize_keeps_unicode_letters() {
+        assert_eq!(sanitize_filename("Zürich"), "Zürich");
+    }
+}

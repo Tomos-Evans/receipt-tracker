@@ -293,3 +293,60 @@ fn truncate(s: &str, max: usize) -> String {
         format!("{}…", &s[..max.saturating_sub(1)])
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::truncate;
+    use wasm_bindgen_test::*;
+
+    wasm_bindgen_test_configure!(run_in_browser);
+
+    // NOTE: `truncate` uses byte-based slicing, which is correct for the ASCII
+    // category names and short notes it receives in practice. Tests stay ASCII
+    // to avoid a potential panic if a cut point fell mid-UTF-8 scalar.
+
+    /// A string shorter than the limit comes back unchanged — no ellipsis added.
+    #[wasm_bindgen_test]
+    fn truncate_short_string_unchanged() {
+        assert_eq!(truncate("hello", 10), "hello");
+    }
+
+    /// A string whose length equals the limit exactly is also kept in full.
+    #[wasm_bindgen_test]
+    fn truncate_exact_length_unchanged() {
+        assert_eq!(truncate("hello", 5), "hello");
+    }
+
+    /// One byte over the limit: the string is cut and the ellipsis (…) appended.
+    #[wasm_bindgen_test]
+    fn truncate_one_over_limit() {
+        // max=5, cut at byte 4 → "hell" + "…"
+        assert_eq!(truncate("hello!", 5), "hell…");
+    }
+
+    /// A clearly long string is trimmed to the right prefix.
+    #[wasm_bindgen_test]
+    fn truncate_long_string() {
+        // max=8: saturating_sub(1)=7, so &s[..7] = "Food & " (7 bytes), then "…"
+        assert_eq!(truncate("Food & Drink", 8), "Food & …");
+    }
+
+    /// Empty input returns empty output with no panic.
+    #[wasm_bindgen_test]
+    fn truncate_empty_string() {
+        assert_eq!(truncate("", 10), "");
+    }
+
+    /// max=0: every non-empty string exceeds the limit.
+    /// saturating_sub(1) = 0 so &s[..0] = "" and the result is just "…".
+    #[wasm_bindgen_test]
+    fn truncate_max_zero_gives_ellipsis() {
+        assert_eq!(truncate("abc", 0), "…");
+    }
+
+    /// max=2: a longer string yields one byte of content plus "…".
+    #[wasm_bindgen_test]
+    fn truncate_max_two() {
+        assert_eq!(truncate("abc", 2), "a…");
+    }
+}
