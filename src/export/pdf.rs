@@ -340,13 +340,27 @@ fn build_jspdf_script(
             // Compute image dimensions first so we can check whether the text row
             // + image fit on the current page before rendering either of them.
             // If they don't fit together, start a new page for both.
-            // A separator line is drawn after the image to tie them visually.
+            // Portrait images (height > width) are rotated 90° on a temporary
+            // canvas before adding to the PDF — this reduces their vertical
+            // footprint and is always a win for tall receipts.
+            // A separator line is drawn after the image to tie it to its row.
             // The catch branch falls back to rendering just the text row if the
             // image data is somehow unreadable.
             lines.push(format!(
                 "  try {{\
                     var _imgData = {};\
                     var _props = doc.getImageProperties(_imgData);\
+                    if (_props.height > _props.width) {{\
+                      var _rc = document.createElement('canvas');\
+                      _rc.width = _props.height; _rc.height = _props.width;\
+                      var _rx = _rc.getContext('2d');\
+                      var _ri = new Image(); _ri.src = _imgData;\
+                      _rx.translate(_rc.width / 2, _rc.height / 2);\
+                      _rx.rotate(Math.PI / 2);\
+                      _rx.drawImage(_ri, -_props.width / 2, -_props.height / 2);\
+                      _imgData = _rc.toDataURL('image/jpeg', 0.7);\
+                      _props = doc.getImageProperties(_imgData);\
+                    }}\
                     var _maxW = 182; var _maxH = 200;\
                     var _ratio = Math.min(_maxW / _props.width, _maxH / _props.height);\
                     var _imgW = _props.width * _ratio;\
