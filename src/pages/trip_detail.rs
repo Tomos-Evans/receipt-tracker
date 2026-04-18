@@ -1,3 +1,4 @@
+use gloo_timers::callback::Timeout;
 use std::rc::Rc;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
@@ -22,6 +23,7 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
     let (store, dispatch) = use_store::<AppStore>();
     let navigator = use_navigator().expect("TripDetailPage must be rendered inside a Router");
     let trip_id = props.trip_id.clone();
+    let show_toast = use_state(|| false);
 
     let on_back = {
         let nav = navigator.clone();
@@ -59,24 +61,12 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
         Callback::from(move |_| nav.push(&Route::AddReceipt { id: tid.clone() }))
     };
 
-    let on_export_csv = {
-        let store = store.clone();
-        let trip_id = trip_id.clone();
-        Callback::from(move |_: MouseEvent| {
-            let receipts = store.current_receipts.clone();
-            let trip = store.trips.iter().find(|t| t.id == trip_id).cloned();
-            let categories = store.categories.clone();
-            if let Some(trip) = trip {
-                crate::export::csv::export_csv(&trip, &receipts, &categories);
-            }
-        })
-    };
-
     let on_export_pdf = {
         let store = store.clone();
         let trip_id = trip_id.clone();
         let db = store.db.clone();
         let dispatch = dispatch.clone();
+        let show_toast = show_toast.clone();
         Callback::from(move |_: MouseEvent| {
             let receipts = store.current_receipts.clone();
             let trip = store.trips.iter().find(|t| t.id == trip_id).cloned();
@@ -86,11 +76,17 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
             {
                 let db = Rc::clone(db);
                 let dispatch = dispatch.clone();
+                let show_toast = show_toast.clone();
                 spawn_local(async move {
-                    if let Err(e) =
-                        crate::export::pdf::export_pdf(&db, &trip, &receipts, &categories).await
-                    {
-                        dispatch.reduce_mut(|s| s.error = Some(e.to_string()));
+                    match crate::export::pdf::export_pdf(&db, &trip, &receipts, &categories).await {
+                        Ok(()) => {
+                            show_toast.set(true);
+                            let show_toast = show_toast.clone();
+                            Timeout::new(3000, move || show_toast.set(false)).forget();
+                        }
+                        Err(e) => {
+                            dispatch.reduce_mut(|s| s.error = Some(e.to_string()));
+                        }
                     }
                 });
             }
@@ -157,9 +153,6 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
 
     let actions = html! {
         <>
-            <button class="icon-btn" onclick={on_export_csv} title="Export CSV">
-                <span class="material-icons">{"table_view"}</span>
-            </button>
             <button class="icon-btn" onclick={on_export_pdf} title="Export PDF">
                 <span class="material-icons">{"picture_as_pdf"}</span>
             </button>
@@ -225,6 +218,12 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
                 }
             </main>
             <Fab icon="add" label="Add Receipt" onclick={on_add_receipt} />
+            if *show_toast {
+                <div class="toast">
+                    <span class="material-icons">{"check_circle"}</span>
+                    {"PDF downloaded"}
+                </div>
+            }
         </div>
     }
 }

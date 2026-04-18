@@ -1,7 +1,7 @@
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::spawn_local;
-use web_sys::{HtmlCanvasElement, HtmlInputElement, HtmlVideoElement};
+use web_sys::{HtmlCanvasElement, HtmlInputElement};
 use yew::prelude::*;
 
 use super::photo_editor::PhotoEditor;
@@ -19,11 +19,6 @@ pub struct PhotoCaptureProps {
 pub enum Msg {
     FileSelected,
     ClearPhoto,
-    CameraCapture,
-    GotStream(web_sys::MediaStream),
-    SnapPhoto,
-    CameraError(String),
-    CloseCamera,
     StartEdit(String),
     PhotoEdited(String),
     EditCancelled,
@@ -32,10 +27,6 @@ pub enum Msg {
 pub struct PhotoCapture {
     file_input_ref: NodeRef,
     canvas_ref: NodeRef,
-    video_ref: NodeRef,
-    camera_open: bool,
-    camera_error: Option<String>,
-    stream: Option<web_sys::MediaStream>,
     pending_edit: Option<String>,
 }
 
@@ -47,10 +38,6 @@ impl Component for PhotoCapture {
         Self {
             file_input_ref: NodeRef::default(),
             canvas_ref: NodeRef::default(),
-            video_ref: NodeRef::default(),
-            camera_open: false,
-            camera_error: None,
-            stream: None,
             pending_edit: None,
         }
     }
@@ -90,127 +77,6 @@ impl Component for PhotoCapture {
                 false
             }
 
-            Msg::CameraCapture => {
-                let link = ctx.link().clone();
-                spawn_local(async move {
-                    let window = match web_sys::window() {
-                        Some(w) => w,
-                        None => {
-                            link.send_message(Msg::CameraError("No window".into()));
-                            return;
-                        }
-                    };
-                    let navigator = window.navigator();
-                    match navigator.media_devices() {
-                        Ok(devices) => {
-                            let constraints = web_sys::MediaStreamConstraints::new();
-                            constraints.set_video(&JsValue::from_bool(true));
-                            let promise =
-                                match devices.get_user_media_with_constraints(&constraints) {
-                                    Ok(p) => p,
-                                    Err(e) => {
-                                        link.send_message(Msg::CameraError(format!("{:?}", e)));
-                                        return;
-                                    }
-                                };
-                            match wasm_bindgen_futures::JsFuture::from(promise).await {
-                                Ok(stream_val) => {
-                                    let stream: web_sys::MediaStream = stream_val.unchecked_into();
-                                    link.send_message(Msg::GotStream(stream));
-                                }
-                                Err(e) => {
-                                    link.send_message(Msg::CameraError(format!(
-                                        "Camera denied: {:?}",
-                                        e
-                                    )));
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            link.send_message(Msg::CameraError(format!(
-                                "No media devices: {:?}",
-                                e
-                            )));
-                        }
-                    }
-                });
-                false
-            }
-
-            Msg::GotStream(stream) => {
-                if let Some(video) = self.video_ref.cast::<HtmlVideoElement>() {
-                    video.set_src_object(Some(&stream));
-                }
-                self.stream = Some(stream);
-                self.camera_open = true;
-                true
-            }
-
-            Msg::SnapPhoto => {
-                let canvas = match self.canvas_ref.cast::<HtmlCanvasElement>() {
-                    Some(c) => c,
-                    None => return false,
-                };
-                let video = match self.video_ref.cast::<HtmlVideoElement>() {
-                    Some(v) => v,
-                    None => return false,
-                };
-
-                let w = video.video_width() as f64;
-                let h = video.video_height() as f64;
-                let (cw, ch) = if w > MAX_WIDTH {
-                    (MAX_WIDTH, h * MAX_WIDTH / w)
-                } else {
-                    (w, h)
-                };
-                canvas.set_width(cw as u32);
-                canvas.set_height(ch as u32);
-
-                if let Ok(Some(obj)) = canvas.get_context("2d") {
-                    let ctx2d: web_sys::CanvasRenderingContext2d = obj.unchecked_into();
-                    let _ = ctx2d
-                        .draw_image_with_html_video_element_and_dw_and_dh(&video, 0.0, 0.0, cw, ch);
-                }
-
-                let data_url = canvas
-                    .to_data_url_with_type_and_encoder_options(
-                        "image/jpeg",
-                        &JsValue::from_f64(JPEG_QUALITY),
-                    )
-                    .unwrap_or_default();
-
-                // Stop camera stream
-                if let Some(stream) = &self.stream {
-                    let tracks = stream.get_tracks();
-                    for i in 0..tracks.length() {
-                        let track: web_sys::MediaStreamTrack = tracks.get(i).unchecked_into();
-                        track.stop();
-                    }
-                }
-                self.stream = None;
-                self.camera_open = false;
-                self.pending_edit = Some(data_url);
-                true
-            }
-
-            Msg::CameraError(e) => {
-                self.camera_error = Some(e);
-                true
-            }
-
-            Msg::CloseCamera => {
-                self.camera_open = false;
-                self.camera_error = None;
-                if let Some(stream) = self.stream.take() {
-                    let tracks = stream.get_tracks();
-                    for i in 0..tracks.length() {
-                        let track: web_sys::MediaStreamTrack = tracks.get(i).unchecked_into();
-                        track.stop();
-                    }
-                }
-                true
-            }
-
             Msg::StartEdit(url) => {
                 self.pending_edit = Some(url);
                 true
@@ -242,9 +108,6 @@ impl Component for PhotoCapture {
         }
 
         let on_file_change = ctx.link().callback(|_: Event| Msg::FileSelected);
-        let on_camera = ctx.link().callback(|_: MouseEvent| Msg::CameraCapture);
-        let on_snap = ctx.link().callback(|_: MouseEvent| Msg::SnapPhoto);
-        let on_close = ctx.link().callback(|_: MouseEvent| Msg::CloseCamera);
         let on_clear = ctx.link().callback(|_: MouseEvent| Msg::ClearPhoto);
 
         html! {
@@ -263,23 +126,6 @@ impl Component for PhotoCapture {
                     }
                 }
 
-                if self.camera_open {
-                    <div class="camera-overlay">
-                        <video ref={self.video_ref.clone()} class="camera-video" autoplay=true playsinline=true />
-                        <div class="camera-controls">
-                            <button class="btn btn-primary" onclick={on_snap}>
-                                <span class="material-icons">{"camera"}</span>
-                                {" Capture"}
-                            </button>
-                            <button class="btn btn-secondary" onclick={on_close}>{"Cancel"}</button>
-                        </div>
-                    </div>
-                }
-
-                if let Some(err) = &self.camera_error {
-                    <p class="form-error">{ err }</p>
-                }
-
                 <div class="photo-actions">
                     <label class="btn btn-secondary photo-pick-btn">
                         <span class="material-icons">{"photo_library"}</span>
@@ -293,10 +139,6 @@ impl Component for PhotoCapture {
                             onchange={on_file_change}
                         />
                     </label>
-                    <button class="btn btn-secondary" onclick={on_camera}>
-                        <span class="material-icons">{"videocam"}</span>
-                        {" Live Camera"}
-                    </button>
                 </div>
             </div>
         }

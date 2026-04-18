@@ -22,6 +22,7 @@ uuid = { version = "1", features = ["v4", "js"] }
 log = "0.4"
 console_log = { version = "1", features = ["color"] }
 gloo-file = "0.3"
+gloo-timers = { version = "0.3", features = ["futures"] }
 gloo-utils = "0.2"
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }

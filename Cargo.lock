@@ -921,6 +921,7 @@ dependencies = [
  "chrono",
  "console_log",
  "gloo-file",
+ "gloo-timers",
  "gloo-utils",
  "image",
  "js-sys",

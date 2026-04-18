@@ -7,7 +7,7 @@ use yewdux::prelude::*;
 use crate::app::Route;
 use crate::components::app_bar::AppBar;
 use crate::components::receipt_form::{ReceiptForm, ReceiptFormData};
-use crate::models::{Receipt, category::CAT_OTHER_ID};
+use crate::models::{Receipt, category::CAT_BREAKFAST_ID};
 use crate::state::AppStore;
 use crate::storage::photos::save_photo;
 use crate::storage::receipts::save_receipt;
@@ -33,7 +33,7 @@ pub fn add_receipt_page(props: &AddReceiptPageProps) -> Html {
         .categories
         .first()
         .map(|c| c.id.clone())
-        .unwrap_or_else(|| CAT_OTHER_ID.to_string());
+        .unwrap_or_else(|| CAT_BREAKFAST_ID.to_string());
 
     let form_data = use_state(move || ReceiptFormData::new(default_cat));
 
