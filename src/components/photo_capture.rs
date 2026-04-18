@@ -17,7 +17,7 @@ pub struct PhotoCaptureProps {
 }
 
 pub enum Msg {
-    FileSelected,
+    FileSelected(NodeRef),
     ClearPhoto,
     StartEdit(String),
     PhotoEdited(String),
@@ -25,7 +25,8 @@ pub enum Msg {
 }
 
 pub struct PhotoCapture {
-    file_input_ref: NodeRef,
+    gallery_input_ref: NodeRef,
+    camera_input_ref: NodeRef,
     canvas_ref: NodeRef,
     pending_edit: Option<String>,
 }
@@ -36,7 +37,8 @@ impl Component for PhotoCapture {
 
     fn create(_ctx: &Context<Self>) -> Self {
         Self {
-            file_input_ref: NodeRef::default(),
+            gallery_input_ref: NodeRef::default(),
+            camera_input_ref: NodeRef::default(),
             canvas_ref: NodeRef::default(),
             pending_edit: None,
         }
@@ -44,8 +46,8 @@ impl Component for PhotoCapture {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::FileSelected => {
-                let input = match self.file_input_ref.cast::<HtmlInputElement>() {
+            Msg::FileSelected(input_ref) => {
+                let input = match input_ref.cast::<HtmlInputElement>() {
                     Some(i) => i,
                     None => return false,
                 };
@@ -70,7 +72,10 @@ impl Component for PhotoCapture {
             }
 
             Msg::ClearPhoto => {
-                if let Some(input) = self.file_input_ref.cast::<HtmlInputElement>() {
+                if let Some(input) = self.gallery_input_ref.cast::<HtmlInputElement>() {
+                    input.set_value("");
+                }
+                if let Some(input) = self.camera_input_ref.cast::<HtmlInputElement>() {
                     input.set_value("");
                 }
                 ctx.props().on_photo.emit(String::new());
@@ -107,7 +112,16 @@ impl Component for PhotoCapture {
             };
         }
 
-        let on_file_change = ctx.link().callback(|_: Event| Msg::FileSelected);
+        let gallery_ref = self.gallery_input_ref.clone();
+        let on_gallery_change = ctx
+            .link()
+            .callback(move |_: Event| Msg::FileSelected(gallery_ref.clone()));
+
+        let camera_ref = self.camera_input_ref.clone();
+        let on_camera_change = ctx
+            .link()
+            .callback(move |_: Event| Msg::FileSelected(camera_ref.clone()));
+
         let on_clear = ctx.link().callback(|_: MouseEvent| Msg::ClearPhoto);
 
         html! {
@@ -129,14 +143,25 @@ impl Component for PhotoCapture {
                 <div class="photo-actions">
                     <label class="btn btn-secondary photo-pick-btn">
                         <span class="material-icons">{"photo_library"}</span>
-                        {" Gallery / Camera"}
+                        {" Gallery"}
                         <input
-                            ref={self.file_input_ref.clone()}
+                            ref={self.gallery_input_ref.clone()}
+                            type="file"
+                            accept="image/*"
+                            style="display:none"
+                            onchange={on_gallery_change}
+                        />
+                    </label>
+                    <label class="btn btn-secondary photo-pick-btn">
+                        <span class="material-icons">{"camera_alt"}</span>
+                        {" Camera"}
+                        <input
+                            ref={self.camera_input_ref.clone()}
                             type="file"
                             accept="image/*"
                             capture="environment"
                             style="display:none"
-                            onchange={on_file_change}
+                            onchange={on_camera_change}
                         />
                     </label>
                 </div>
