@@ -327,24 +327,22 @@ fn build_jspdf_script(
         let notes = r.notes.as_deref().unwrap_or("");
         let amount_str = format!("{} {:.2}", r.currency, r.amount);
 
-        lines.push("  if (y > 260) { doc.addPage(); y = 20; }".to_string());
-        lines.push(format!(
-            "  doc.text({}, 14, y);",
-            js_str(&r.date.to_string())
-        ));
-        lines.push(format!(
-            "  doc.text({}, 40, y);",
-            js_str(&truncate(cat, 25))
-        ));
-        lines.push(format!("  doc.text({}, 100, y);", js_str(&amount_str)));
-        lines.push(format!(
-            "  doc.text({}, 130, y);",
+        // Inline JS to render a single receipt row (used in both branches below)
+        let row_js = format!(
+            "doc.text({}, 14, y); doc.text({}, 40, y); doc.text({}, 100, y); doc.text({}, 130, y); y += 7;",
+            js_str(&r.date.to_string()),
+            js_str(&truncate(cat, 25)),
+            js_str(&amount_str),
             js_str(&truncate(notes, 35))
-        ));
-        lines.push("  y += 7;".to_string());
+        );
 
-        // Embed photo if available, preserving original aspect ratio
         if let Some(photo_data) = photos.get(&r.id) {
+            // Compute image dimensions first so we can check whether the text row
+            // + image fit on the current page before rendering either of them.
+            // If they don't fit together, start a new page for both.
+            // A separator line is drawn after the image to tie them visually.
+            // The catch branch falls back to rendering just the text row if the
+            // image data is somehow unreadable.
             lines.push(format!(
                 "  try {{\
                     var _imgData = {};\
@@ -353,12 +351,22 @@ fn build_jspdf_script(
                     var _ratio = Math.min(_maxW / _props.width, _maxH / _props.height);\
                     var _imgW = _props.width * _ratio;\
                     var _imgH = _props.height * _ratio;\
-                    if (y + _imgH > 277) {{ doc.addPage(); y = 20; }}\
+                    if (y + 7 + _imgH + 11 > 277) {{ doc.addPage(); y = 20; }}\
+                    {}\
                     doc.addImage(_imgData, 'JPEG', 14, y, _imgW, _imgH);\
                     y += _imgH + 5;\
-                  }} catch(e) {{}}",
-                js_str(photo_data)
+                    doc.line(14, y, 196, y); y += 6;\
+                  }} catch(e) {{\
+                    if (y > 260) {{ doc.addPage(); y = 20; }}\
+                    {}\
+                  }}",
+                js_str(photo_data),
+                row_js,
+                row_js,
             ));
+        } else {
+            lines.push("  if (y > 260) { doc.addPage(); y = 20; }".to_string());
+            lines.push(format!("  {}", row_js));
         }
     }
 
