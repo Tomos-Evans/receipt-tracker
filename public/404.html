@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Receipt Tracker</title>
+  <script>
+    // GitHub Pages SPA redirect.
+    // When GH Pages can't find a file it serves this page. We encode the
+    // requested path into a query parameter and redirect to the real index,
+    // which will restore the URL before the JS router starts up.
+    // segmentCount = number of path segments in the repo name (1 for /receipt-tracker/)
+    var segmentCount = 1;
+    var l = window.location;
+    l.replace(
+      l.protocol + '//' + l.host + '/' +
+      l.pathname.slice(1).split('/').slice(0, segmentCount).join('/') + '/?p=/' +
+      l.pathname.slice(1).split('/').slice(segmentCount).join('/').replace(/&/g, '~and~') +
+      (l.search ? '&q=' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+      l.hash
+    );
+  </script>
+</head>
+<body></body>
+</html>
