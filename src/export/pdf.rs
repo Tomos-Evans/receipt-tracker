@@ -52,6 +52,8 @@ fn build_jspdf_script(
     categories: &[Category],
     photos: &std::collections::HashMap<String, String>,
 ) -> String {
+    use std::collections::BTreeMap;
+
     let filename = format!(
         "{}.pdf",
         trip.name
@@ -66,39 +68,64 @@ fn build_jspdf_script(
 
     let trip_days = ((trip.end_date - trip.start_date).num_days() + 1).max(1) as f64;
 
-    // Group receipts by date (BTreeMap keeps dates in order), then by category name
-    let mut daily: std::collections::BTreeMap<
-        chrono::NaiveDate,
-        std::collections::HashMap<String, f64>,
-    > = std::collections::BTreeMap::new();
+    // Per-currency totals (BTreeMap = alphabetically stable)
+    let mut currency_totals: BTreeMap<String, f64> = BTreeMap::new();
+    for r in receipts {
+        *currency_totals.entry(r.currency.clone()).or_default() += r.amount;
+    }
+    let is_multi_currency = currency_totals.len() > 1;
+
+    let currencies_label = currency_totals
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(" / ");
+    let totals_summary = currency_totals
+        .iter()
+        .map(|(c, a)| format!("{} {:.2}", c, a))
+        .collect::<Vec<_>>()
+        .join("  |  ");
+
+    // Group receipts by date → (label_key → (currency, amount)).
+    // When multi-currency the label key is "Cat (EUR)" so amounts in
+    // different currencies never get summed together.
+    let mut daily: BTreeMap<chrono::NaiveDate, BTreeMap<String, (String, f64)>> = BTreeMap::new();
     for r in receipts {
         let cat_name = categories
             .iter()
             .find(|c| c.id == r.category_id)
             .map(|c| c.name.clone())
             .unwrap_or_else(|| "Other".to_string());
-        *daily
+        let label = if is_multi_currency {
+            format!("{} ({})", cat_name, r.currency)
+        } else {
+            cat_name
+        };
+        let entry = daily
             .entry(r.date)
             .or_default()
-            .entry(cat_name)
-            .or_default() += r.amount;
+            .entry(label)
+            .or_insert_with(|| (r.currency.clone(), 0.0));
+        entry.1 += r.amount;
     }
 
-    // Overall per-category totals, sorted descending
-    let mut cat_totals_map: std::collections::HashMap<String, f64> =
-        std::collections::HashMap::new();
+    // Overall per-(category, currency) totals, sorted descending by amount
+    let mut cat_totals_map: BTreeMap<(String, String), f64> = BTreeMap::new();
     for r in receipts {
         let cat_name = categories
             .iter()
             .find(|c| c.id == r.category_id)
             .map(|c| c.name.clone())
             .unwrap_or_else(|| "Other".to_string());
-        *cat_totals_map.entry(cat_name).or_default() += r.amount;
+        *cat_totals_map
+            .entry((cat_name, r.currency.clone()))
+            .or_default() += r.amount;
     }
-    let mut cat_totals: Vec<(String, f64)> = cat_totals_map.into_iter().collect();
-    cat_totals.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-    let grand_total: f64 = receipts.iter().map(|r| r.amount).sum();
+    let mut cat_totals: Vec<(String, String, f64)> = cat_totals_map
+        .into_iter()
+        .map(|((name, cur), amt)| (name, cur, amt))
+        .collect();
+    cat_totals.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
 
     let mut lines = Vec::new();
 
@@ -130,14 +157,14 @@ fn build_jspdf_script(
         "  doc.setFontSize(11); doc.setFont(undefined, 'normal'); doc.text({}, 14, 28);",
         js_str(&format!(
             "{} — {} to {}",
-            trip.currency, trip.start_date, trip.end_date
+            currencies_label, trip.start_date, trip.end_date
         ))
     ));
     lines.push(format!(
         "  doc.setFontSize(10); doc.text({}, 14, 34);",
         js_str(&format!(
-            "{} day trip  •  Grand total: {} {:.2}",
-            trip_days as i64, trip.currency, grand_total
+            "{} day trip  •  {}",
+            trip_days as i64, totals_summary
         ))
     ));
     lines.push("  var y = 44;".to_string());
@@ -149,13 +176,25 @@ fn build_jspdf_script(
 
     for (date, cats_map) in &daily {
         let display_date = date.format("%a %d %b %Y").to_string();
-        let mut day_cats: Vec<(&str, f64)> =
-            cats_map.iter().map(|(k, &v)| (k.as_str(), v)).collect();
-        day_cats.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        let day_total: f64 = day_cats.iter().map(|(_, v)| v).sum();
+        let mut day_rows: Vec<(&str, &str, f64)> = cats_map
+            .iter()
+            .map(|(k, (cur, v))| (k.as_str(), cur.as_str(), *v))
+            .collect();
+        day_rows.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Per-currency day totals
+        let mut day_cur_totals: BTreeMap<String, f64> = BTreeMap::new();
+        for (_, cur, amt) in &day_rows {
+            *day_cur_totals.entry((*cur).to_string()).or_default() += amt;
+        }
+        let day_total_str = day_cur_totals
+            .iter()
+            .map(|(c, a)| format!("{} {:.2}", c, a))
+            .collect::<Vec<_>>()
+            .join(" + ");
 
         // Estimate the height this day block needs and page-break if necessary
-        let block_h = 7 + day_cats.len() as i32 * 6 + 8;
+        let block_h = 7 + day_rows.len() as i32 * 6 + 8;
         lines.push(format!(
             "  if (y + {} > 277) {{ doc.addPage(); y = 20; }}",
             block_h
@@ -168,13 +207,14 @@ fn build_jspdf_script(
             js_str(&display_date)
         ));
 
-        // One row per category
+        // One row per (category, currency)
         lines.push("  doc.setFont(undefined, 'normal');".to_string());
-        for (cat_name, amount) in &day_cats {
+        for (label, cur, amount) in &day_rows {
+            let amount_str = format!("{} {:.2}", cur, amount);
             lines.push(format!(
                 "  doc.text({}, 22, y); doc.text({}, 130, y); y += 6;",
-                js_str(&truncate(cat_name, 30)),
-                js_str(&format!("{} {:.2}", trip.currency, amount))
+                js_str(&truncate(label, 30)),
+                js_str(&amount_str)
             ));
         }
 
@@ -182,7 +222,7 @@ fn build_jspdf_script(
         lines.push("  doc.setFont(undefined, 'bold');".to_string());
         lines.push(format!(
             "  doc.text('Day total', 22, y); doc.text({}, 130, y); y += 10;",
-            js_str(&format!("{} {:.2}", trip.currency, day_total))
+            js_str(&day_total_str)
         ));
         lines.push("  doc.setFont(undefined, 'normal');".to_string());
     }
@@ -198,36 +238,65 @@ fn build_jspdf_script(
         // Column headers
         lines.push("  doc.setFontSize(10);".to_string());
         lines.push("  doc.text('Category', 14, y);".to_string());
-        lines.push(format!(
-            "  doc.text({}, 115, y);",
-            js_str(&format!("Total ({})", trip.currency))
-        ));
-        lines.push(format!(
-            "  doc.text({}, 157, y);",
-            js_str(&format!("Avg / day ({})", trip.currency))
-        ));
+        if is_multi_currency {
+            lines.push("  doc.text('Currency', 105, y);".to_string());
+            lines.push("  doc.text('Total', 130, y);".to_string());
+            lines.push("  doc.text('Avg / day', 162, y);".to_string());
+        } else {
+            let cur = currency_totals
+                .keys()
+                .next()
+                .map(String::as_str)
+                .unwrap_or("");
+            lines.push(format!(
+                "  doc.text({}, 115, y);",
+                js_str(&format!("Total ({})", cur))
+            ));
+            lines.push(format!(
+                "  doc.text({}, 157, y);",
+                js_str(&format!("Avg / day ({})", cur))
+            ));
+        }
         lines.push("  doc.setFont(undefined, 'normal');".to_string());
         lines.push("  y += 4; doc.line(14, y, 196, y); y += 6;".to_string());
 
-        for (name, cat_total) in &cat_totals {
+        for (name, cur, cat_total) in &cat_totals {
             let per_day = cat_total / trip_days;
             lines.push("  if (y > 270) { doc.addPage(); y = 20; }".to_string());
-            lines.push(format!(
-                "  doc.text({}, 14, y); doc.text({}, 115, y); doc.text({}, 157, y); y += 7;",
-                js_str(&truncate(name, 32)),
-                js_str(&format!("{:.2}", cat_total)),
-                js_str(&format!("{:.2}", per_day))
-            ));
+            if is_multi_currency {
+                lines.push(format!(
+                    "  doc.text({}, 14, y); doc.text({}, 105, y); doc.text({}, 130, y); doc.text({}, 162, y); y += 7;",
+                    js_str(&truncate(name, 28)),
+                    js_str(cur),
+                    js_str(&format!("{:.2}", cat_total)),
+                    js_str(&format!("{:.2}", per_day))
+                ));
+            } else {
+                lines.push(format!(
+                    "  doc.text({}, 14, y); doc.text({}, 115, y); doc.text({}, 157, y); y += 7;",
+                    js_str(&truncate(name, 32)),
+                    js_str(&format!("{:.2}", cat_total)),
+                    js_str(&format!("{:.2}", per_day))
+                ));
+            }
         }
 
-        // Grand total row
+        // Grand total row(s)
         lines.push("  y += 2; doc.line(14, y, 196, y); y += 6;".to_string());
         lines.push("  doc.setFont(undefined, 'bold');".to_string());
-        lines.push(format!(
-            "  doc.text('Grand Total', 14, y); doc.text({:?}, 115, y); doc.text({:?}, 157, y);",
-            format!("{:.2}", grand_total),
-            format!("{:.2}", grand_total / trip_days)
-        ));
+        if is_multi_currency {
+            lines.push(format!(
+                "  doc.text('Totals', 14, y); doc.text({}, 105, y); y += 7;",
+                js_str(&totals_summary)
+            ));
+        } else {
+            let grand_total: f64 = receipts.iter().map(|r| r.amount).sum();
+            lines.push(format!(
+                "  doc.text('Grand Total', 14, y); doc.text({}, 115, y); doc.text({}, 157, y);",
+                js_str(&format!("{:.2}", grand_total)),
+                js_str(&format!("{:.2}", grand_total / trip_days))
+            ));
+        }
         lines.push("  doc.setFont(undefined, 'normal');".to_string());
     }
 
@@ -249,7 +318,6 @@ fn build_jspdf_script(
     lines.push("  doc.setFont(undefined, 'normal');".to_string());
     lines.push("  y += 4; doc.line(14, y, 196, y); y += 4;".to_string());
 
-    let mut total = 0.0f64;
     for r in receipts {
         let cat = categories
             .iter()
@@ -257,8 +325,7 @@ fn build_jspdf_script(
             .map(|c| c.name.as_str())
             .unwrap_or("Other");
         let notes = r.notes.as_deref().unwrap_or("");
-        let amount_str = format!("{} {:.2}", trip.currency, r.amount);
-        total += r.amount;
+        let amount_str = format!("{} {:.2}", r.currency, r.amount);
 
         lines.push("  if (y > 260) { doc.addPage(); y = 20; }".to_string());
         lines.push(format!(
@@ -295,13 +362,13 @@ fn build_jspdf_script(
         }
     }
 
-    // Total row
+    // Total row(s)
     lines.push("  if (y > 260) { doc.addPage(); y = 20; }".to_string());
     lines.push("  y += 2; doc.line(14, y, 196, y); y += 6;".to_string());
     lines.push("  doc.setFont(undefined, 'bold');".to_string());
     lines.push(format!(
         "  doc.text({}, 100, y);",
-        js_str(&format!("Total: {} {:.2}", trip.currency, total))
+        js_str(&format!("Total: {}", totals_summary))
     ));
     lines.push("  doc.setFont(undefined, 'normal');".to_string());
 

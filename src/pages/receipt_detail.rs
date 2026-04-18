@@ -57,9 +57,6 @@ pub fn receipt_detail_page(props: &ReceiptDetailPageProps) -> Html {
             .cloned()
     });
 
-    let trip = store.trips.iter().find(|t| t.id == trip_id).cloned();
-    let currency = trip.as_ref().map(|t| t.currency.as_str()).unwrap_or("USD");
-
     let on_back = {
         let nav = navigator.clone();
         let tid = trip_id.clone();
@@ -127,7 +124,7 @@ pub fn receipt_detail_page(props: &ReceiptDetailPageProps) -> Html {
                 if let Some(receipt) = &receipt {
                     <div class="receipt-detail">
                         <div class="detail-amount">
-                            { format!("{} {:.2}", currency, receipt.amount) }
+                            { format!("{} {:.2}", receipt.currency, receipt.amount) }
                         </div>
 
                         <div class="detail-row">

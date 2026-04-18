@@ -1,4 +1,5 @@
 use crate::components::category_selector::CategorySelector;
+use crate::components::currency_selector::CurrencySelector;
 use crate::components::photo_capture::PhotoCapture;
 use crate::models::Category;
 use chrono::NaiveDate;
@@ -11,16 +12,18 @@ pub struct ReceiptFormData {
     pub notes: String,
     pub date: String,
     pub photo: Option<String>,
+    pub currency: String,
 }
 
 impl ReceiptFormData {
-    pub fn new(default_category_id: String) -> Self {
+    pub fn new(default_category_id: String, default_currency: String) -> Self {
         Self {
             amount: String::new(),
             category_id: default_category_id,
             notes: String::new(),
             date: chrono::Local::now().date_naive().to_string(),
             photo: None,
+            currency: default_currency,
         }
     }
 
@@ -31,6 +34,7 @@ impl ReceiptFormData {
             notes: receipt.notes.clone().unwrap_or_default(),
             date: receipt.date.to_string(),
             photo,
+            currency: receipt.currency.clone(),
         }
     }
 
@@ -67,6 +71,16 @@ pub fn receipt_form(props: &ReceiptFormProps) -> Html {
             let input: web_sys::HtmlInputElement = e.target_unchecked_into();
             let mut d = data.clone();
             d.amount = input.value();
+            cb.emit(d);
+        })
+    };
+
+    let on_currency = {
+        let data = data.clone();
+        let cb = props.on_change.clone();
+        Callback::from(move |val: String| {
+            let mut d = data.clone();
+            d.currency = val;
             cb.emit(d);
         })
     };
@@ -139,6 +153,11 @@ pub fn receipt_form(props: &ReceiptFormProps) -> Html {
                     required=true
                 />
             </div>
+
+            <CurrencySelector
+                value={data.currency.clone()}
+                onchange={on_currency}
+            />
 
             <CategorySelector
                 categories={props.categories.clone()}

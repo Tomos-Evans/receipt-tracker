@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yew_router::prelude::*;
@@ -11,8 +11,8 @@ use crate::components::trip_card::TripCard;
 use crate::state::AppStore;
 use crate::storage::receipts::get_all_receipts;
 
-/// Maps trip_id → (receipt_count, total_amount)
-type TripSummaries = HashMap<String, (usize, f64)>;
+/// Maps trip_id → (receipt_count, currency → total)
+type TripSummaries = HashMap<String, (usize, BTreeMap<String, f64>)>;
 
 #[function_component(TripListPage)]
 pub fn trip_list_page() -> Html {
@@ -30,9 +30,11 @@ pub fn trip_list_page() -> Html {
                     if let Ok(all_receipts) = get_all_receipts(&db).await {
                         let mut map: TripSummaries = HashMap::new();
                         for r in &all_receipts {
-                            let entry = map.entry(r.trip_id.clone()).or_insert((0, 0.0));
+                            let entry = map
+                                .entry(r.trip_id.clone())
+                                .or_insert_with(|| (0, BTreeMap::new()));
                             entry.0 += 1;
-                            entry.1 += r.amount;
+                            *entry.1.entry(r.currency.clone()).or_default() += r.amount;
                         }
                         summaries.set(map);
                     }
@@ -60,16 +62,16 @@ pub fn trip_list_page() -> Html {
                 } else {
                     <div class="card-list">
                         { for store.trips.iter().map(|trip| {
-                            let (count, total) = summaries
+                            let (count, currency_totals) = summaries
                                 .get(&trip.id)
-                                .copied()
-                                .unwrap_or((0, 0.0));
+                                .cloned()
+                                .unwrap_or_default();
                             html! {
                                 <TripCard
                                     key={trip.id.clone()}
                                     trip={trip.clone()}
                                     receipt_count={count}
-                                    total={total}
+                                    currency_totals={currency_totals}
                                 />
                             }
                         })}

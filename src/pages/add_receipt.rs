@@ -35,7 +35,14 @@ pub fn add_receipt_page(props: &AddReceiptPageProps) -> Html {
         .map(|c| c.id.clone())
         .unwrap_or_else(|| CAT_BREAKFAST_ID.to_string());
 
-    let form_data = use_state(move || ReceiptFormData::new(default_cat));
+    let trip_currency = store
+        .trips
+        .iter()
+        .find(|t| t.id == trip_id)
+        .map(|t| t.currency.clone())
+        .unwrap_or_else(|| "USD".to_string());
+
+    let form_data = use_state(move || ReceiptFormData::new(default_cat, trip_currency));
 
     let on_change = {
         let form_data = form_data.clone();
@@ -70,6 +77,7 @@ pub fn add_receipt_page(props: &AddReceiptPageProps) -> Html {
                     Some(data.notes.clone())
                 },
                 date,
+                data.currency.clone(),
             );
 
             spawn_local(async move {

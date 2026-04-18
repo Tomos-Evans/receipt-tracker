@@ -89,6 +89,7 @@ pub fn edit_receipt_page(props: &EditReceiptPageProps) -> Html {
 
             let mut updated = existing;
             updated.amount = data.amount_f64().unwrap_or(updated.amount);
+            updated.currency = data.currency.clone();
             updated.category_id = data.category_id.clone();
             updated.notes = if data.notes.is_empty() {
                 None

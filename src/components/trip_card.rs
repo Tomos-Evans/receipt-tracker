@@ -1,5 +1,6 @@
 use crate::app::Route;
 use crate::models::Trip;
+use std::collections::BTreeMap;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -7,7 +8,7 @@ use yew_router::prelude::*;
 pub struct TripCardProps {
     pub trip: Trip,
     pub receipt_count: usize,
-    pub total: f64,
+    pub currency_totals: BTreeMap<String, f64>,
 }
 
 #[function_component(TripCard)]
@@ -20,6 +21,17 @@ pub fn trip_card(props: &TripCardProps) -> Html {
             id: trip_id.clone(),
         });
     });
+
+    let total_str: String = if props.currency_totals.is_empty() {
+        format!("{} 0.00", props.trip.currency)
+    } else {
+        props
+            .currency_totals
+            .iter()
+            .map(|(c, a)| format!("{} {:.2}", c, a))
+            .collect::<Vec<_>>()
+            .join(" · ")
+    };
 
     html! {
         <div class="card trip-card" onclick={onclick}>
@@ -39,7 +51,7 @@ pub fn trip_card(props: &TripCardProps) -> Html {
                         { format!("{} receipts", props.receipt_count) }
                     </span>
                     <span class="trip-total">
-                        { format!("{} {:.2}", props.trip.currency, props.total) }
+                        { total_str }
                     </span>
                 </div>
             </div>

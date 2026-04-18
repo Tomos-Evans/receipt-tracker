@@ -2,6 +2,10 @@ use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+fn default_currency() -> String {
+    "USD".to_string()
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Receipt {
     pub id: String,
@@ -11,6 +15,8 @@ pub struct Receipt {
     pub notes: Option<String>,
     pub date: NaiveDate,
     pub created_at: DateTime<Utc>,
+    #[serde(default = "default_currency")]
+    pub currency: String,
 }
 
 impl Receipt {
@@ -20,6 +26,7 @@ impl Receipt {
         category_id: String,
         notes: Option<String>,
         date: NaiveDate,
+        currency: String,
     ) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
@@ -29,6 +36,7 @@ impl Receipt {
             notes,
             date,
             created_at: Utc::now(),
+            currency,
         }
     }
 }

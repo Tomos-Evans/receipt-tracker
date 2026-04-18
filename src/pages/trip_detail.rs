@@ -1,9 +1,12 @@
 use gloo_timers::callback::Timeout;
+use std::collections::BTreeMap;
 use std::rc::Rc;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yew_router::prelude::*;
 use yewdux::prelude::*;
+
+type CatRow = (String, Option<String>, Option<String>, f64);
 
 use crate::app::Route;
 use crate::components::app_bar::AppBar;
@@ -123,33 +126,42 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
         })
     };
 
-    let total: f64 = store.current_receipts.iter().map(|r| r.amount).sum();
-    let currency = trip.as_ref().map(|t| t.currency.as_str()).unwrap_or("USD");
+    // Currency totals: currency → total
+    let mut currency_totals: BTreeMap<String, f64> = BTreeMap::new();
+    for r in &store.current_receipts {
+        *currency_totals.entry(r.currency.clone()).or_default() += r.amount;
+    }
+    let is_multi_currency = currency_totals.len() > 1;
 
-    // Per-category totals, sorted descending by amount
-    let mut cat_totals: Vec<(String, Option<String>, Option<String>, f64)> = store
-        .categories
+    let total_str: String = currency_totals
         .iter()
-        .filter_map(|cat| {
+        .map(|(c, a)| format!("{} {:.2}", c, a))
+        .collect::<Vec<_>>()
+        .join("  ·  ");
+
+    // Category breakdown grouped by currency
+    let mut cat_by_currency: BTreeMap<String, Vec<CatRow>> = BTreeMap::new();
+    for cat in &store.categories {
+        for cur in currency_totals.keys() {
             let cat_total: f64 = store
                 .current_receipts
                 .iter()
-                .filter(|r| r.category_id == cat.id)
+                .filter(|r| r.category_id == cat.id && &r.currency == cur)
                 .map(|r| r.amount)
                 .sum();
             if cat_total > 0.0 {
-                Some((
+                cat_by_currency.entry(cur.clone()).or_default().push((
                     cat.name.clone(),
                     cat.icon.clone(),
                     cat.color.clone(),
                     cat_total,
-                ))
-            } else {
-                None
+                ));
             }
-        })
-        .collect();
-    cat_totals.sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap_or(std::cmp::Ordering::Equal));
+        }
+    }
+    for rows in cat_by_currency.values_mut() {
+        rows.sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap_or(std::cmp::Ordering::Equal));
+    }
 
     let actions = html! {
         <>
@@ -173,21 +185,33 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
                 if let Some(trip) = &trip {
                     <div class="trip-summary-bar">
                         <span>{ format!("{} – {}", trip.start_date, trip.end_date) }</span>
-                        <strong>{ format!("Total: {} {:.2}", currency, total) }</strong>
+                        <strong>{ total_str }</strong>
                     </div>
                 }
-                if !cat_totals.is_empty() {
+                if !cat_by_currency.is_empty() {
                     <div class="category-breakdown">
                         <div class="category-breakdown-header">{"By category"}</div>
-                        { for cat_totals.iter().map(|(name, icon, color, amount)| {
-                            let icon_name = icon.as_deref().unwrap_or("label");
-                            let color_style = format!("color:{}", color.as_deref().unwrap_or("#757575"));
+                        { for cat_by_currency.iter().map(|(cur, rows)| {
+                            let cur = cur.clone();
                             html! {
-                                <div class="cat-breakdown-row">
-                                    <span class="material-icons cat-breakdown-icon" style={color_style}>{icon_name}</span>
-                                    <span class="cat-breakdown-name">{name}</span>
-                                    <span class="cat-breakdown-amount">{format!("{} {:.2}", currency, amount)}</span>
-                                </div>
+                                <>
+                                    if is_multi_currency {
+                                        <div class="currency-group-label">{ &cur }</div>
+                                    }
+                                    { for rows.iter().map(|(name, icon, color, amount)| {
+                                        let icon_name = icon.as_deref().unwrap_or("label");
+                                        let color_style = format!("color:{}", color.as_deref().unwrap_or("#757575"));
+                                        html! {
+                                            <div class="cat-breakdown-row">
+                                                <span class="material-icons cat-breakdown-icon" style={color_style}>{icon_name}</span>
+                                                <span class="cat-breakdown-name">{name}</span>
+                                                <span class="cat-breakdown-amount">
+                                                    { format!("{} {:.2}", cur, amount) }
+                                                </span>
+                                            </div>
+                                        }
+                                    })}
+                                </>
                             }
                         })}
                     </div>
@@ -209,7 +233,6 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
                                     key={receipt.id.clone()}
                                     receipt={receipt.clone()}
                                     category={cat}
-                                    currency={currency.to_string()}
                                     has_photo={false}
                                 />
                             }

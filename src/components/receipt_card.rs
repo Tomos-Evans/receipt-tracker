@@ -7,7 +7,6 @@ use yew_router::prelude::*;
 pub struct ReceiptCardProps {
     pub receipt: Receipt,
     pub category: Option<Category>,
-    pub currency: String,
     pub has_photo: bool,
 }
 
@@ -56,7 +55,7 @@ pub fn receipt_card(props: &ReceiptCardProps) -> Html {
                 <p class="receipt-date small">{ props.receipt.date.to_string() }</p>
             </div>
             <div class="receipt-card-amount">
-                { format!("{} {:.2}", props.currency, props.receipt.amount) }
+                { format!("{} {:.2}", props.receipt.currency, props.receipt.amount) }
             </div>
         </div>
     }
