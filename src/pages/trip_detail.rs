@@ -102,6 +102,15 @@ pub fn trip_detail_page(props: &TripDetailPageProps) -> Html {
         let navigator = navigator.clone();
         let trip_id = trip_id.clone();
         Callback::from(move |_: MouseEvent| {
+            let confirmed = web_sys::window()
+                .and_then(|w| {
+                    w.confirm_with_message("Delete this trip and all its receipts?")
+                        .ok()
+                })
+                .unwrap_or(false);
+            if !confirmed {
+                return;
+            }
             if let Some(db) = &store.db {
                 let db = Rc::clone(db);
                 let trip_id = trip_id.clone();

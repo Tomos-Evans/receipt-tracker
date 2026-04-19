@@ -82,6 +82,12 @@ pub fn receipt_detail_page(props: &ReceiptDetailPageProps) -> Html {
         let receipt_id = receipt_id.clone();
         let trip_id = trip_id.clone();
         Callback::from(move |_: MouseEvent| {
+            let confirmed = web_sys::window()
+                .and_then(|w| w.confirm_with_message("Delete this receipt?").ok())
+                .unwrap_or(false);
+            if !confirmed {
+                return;
+            }
             if let Some(db) = &store.db {
                 let db = Rc::clone(db);
                 let dispatch = dispatch.clone();
