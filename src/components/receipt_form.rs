@@ -51,6 +51,25 @@ impl ReceiptFormData {
     }
 }
 
+fn compute_claimable_with_tax(total: &str, subtotal: &str, claimable: &str) -> Option<f64> {
+    let t: f64 = total.parse().ok().filter(|&v: &f64| v > 0.0)?;
+    let s: f64 = subtotal.parse().ok().filter(|&v: &f64| v > 0.0)?;
+    let c: f64 = claimable.parse().ok().filter(|&v: &f64| v >= 0.0)?;
+    Some(c * (1.0 + (t - s) / s))
+}
+
+fn compute_tax_pct(total: &str, subtotal: &str) -> Option<f64> {
+    let t: f64 = total.parse().ok().filter(|&v: &f64| v > 0.0)?;
+    let s: f64 = subtotal.parse().ok().filter(|&v: &f64| v > 0.0)?;
+    Some((t - s) / s * 100.0)
+}
+
+#[derive(Clone, PartialEq)]
+enum FormTab {
+    Basic,
+    Advanced,
+}
+
 #[derive(Properties, PartialEq)]
 pub struct ReceiptFormProps {
     pub data: ReceiptFormData,
@@ -63,6 +82,20 @@ pub struct ReceiptFormProps {
 #[function_component(ReceiptForm)]
 pub fn receipt_form(props: &ReceiptFormProps) -> Html {
     let data = props.data.clone();
+    let active_tab = use_state(|| FormTab::Basic);
+    let adv_total = use_state(String::new);
+    let adv_subtotal = use_state(String::new);
+    let adv_claimable = use_state(String::new);
+
+    let on_tab_basic = {
+        let active_tab = active_tab.clone();
+        Callback::from(move |_: MouseEvent| active_tab.set(FormTab::Basic))
+    };
+
+    let on_tab_advanced = {
+        let active_tab = active_tab.clone();
+        Callback::from(move |_: MouseEvent| active_tab.set(FormTab::Advanced))
+    };
 
     let on_amount = {
         let data = data.clone();
@@ -72,6 +105,60 @@ pub fn receipt_form(props: &ReceiptFormProps) -> Html {
             let mut d = data.clone();
             d.amount = input.value();
             cb.emit(d);
+        })
+    };
+
+    let on_adv_total = {
+        let adv_total = adv_total.clone();
+        let adv_subtotal = adv_subtotal.clone();
+        let adv_claimable = adv_claimable.clone();
+        let data = data.clone();
+        let cb = props.on_change.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: web_sys::HtmlInputElement = e.target_unchecked_into();
+            let val = input.value();
+            adv_total.set(val.clone());
+            if let Some(result) = compute_claimable_with_tax(&val, &adv_subtotal, &adv_claimable) {
+                let mut d = data.clone();
+                d.amount = format!("{:.2}", result);
+                cb.emit(d);
+            }
+        })
+    };
+
+    let on_adv_subtotal = {
+        let adv_total = adv_total.clone();
+        let adv_subtotal = adv_subtotal.clone();
+        let adv_claimable = adv_claimable.clone();
+        let data = data.clone();
+        let cb = props.on_change.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: web_sys::HtmlInputElement = e.target_unchecked_into();
+            let val = input.value();
+            adv_subtotal.set(val.clone());
+            if let Some(result) = compute_claimable_with_tax(&adv_total, &val, &adv_claimable) {
+                let mut d = data.clone();
+                d.amount = format!("{:.2}", result);
+                cb.emit(d);
+            }
+        })
+    };
+
+    let on_adv_claimable = {
+        let adv_total = adv_total.clone();
+        let adv_subtotal = adv_subtotal.clone();
+        let adv_claimable = adv_claimable.clone();
+        let data = data.clone();
+        let cb = props.on_change.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: web_sys::HtmlInputElement = e.target_unchecked_into();
+            let val = input.value();
+            adv_claimable.set(val.clone());
+            if let Some(result) = compute_claimable_with_tax(&adv_total, &adv_subtotal, &val) {
+                let mut d = data.clone();
+                d.amount = format!("{:.2}", result);
+                cb.emit(d);
+            }
         })
     };
 
@@ -138,21 +225,85 @@ pub fn receipt_form(props: &ReceiptFormProps) -> Html {
         })
     };
 
+    let tax_pct = compute_tax_pct(&adv_total, &adv_subtotal);
+    let claimable_with_tax = compute_claimable_with_tax(&adv_total, &adv_subtotal, &adv_claimable);
+
     html! {
         <form class="form" onsubmit={on_submit}>
-            <div class="form-field">
-                <label class="form-label">{"Amount"}</label>
-                <input
-                    class="form-input"
-                    type="number"
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    value={data.amount.clone()}
-                    oninput={on_amount}
-                    required=true
-                />
+            <div class="form-tabs">
+                <button
+                    type="button"
+                    class={if *active_tab == FormTab::Basic { "form-tab active" } else { "form-tab" }}
+                    onclick={on_tab_basic}
+                >{"Basic"}</button>
+                <button
+                    type="button"
+                    class={if *active_tab == FormTab::Advanced { "form-tab active" } else { "form-tab" }}
+                    onclick={on_tab_advanced}
+                >{"Advanced"}</button>
             </div>
+
+            if *active_tab == FormTab::Basic {
+                <div class="form-field">
+                    <label class="form-label">{"Amount"}</label>
+                    <input
+                        class="form-input"
+                        type="number"
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                        value={data.amount.clone()}
+                        oninput={on_amount}
+                        required=true
+                    />
+                </div>
+            } else {
+                <div class="form-field">
+                    <label class="form-label">{"Total receipt amount"}</label>
+                    <input
+                        class="form-input"
+                        type="number"
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                        value={(*adv_total).clone()}
+                        oninput={on_adv_total}
+                    />
+                </div>
+                <div class="form-field">
+                    <label class="form-label">{"Subtotal before tax & tip"}</label>
+                    <input
+                        class="form-input"
+                        type="number"
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                        value={(*adv_subtotal).clone()}
+                        oninput={on_adv_subtotal}
+                    />
+                    if let Some(pct) = tax_pct {
+                        <span class="adv-hint">{format!("Tax/tip overhead: {:.1}%", pct)}</span>
+                    }
+                </div>
+                <div class="form-field">
+                    <label class="form-label">{"Claimable before tax & tip"}</label>
+                    <input
+                        class="form-input"
+                        type="number"
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                        value={(*adv_claimable).clone()}
+                        oninput={on_adv_claimable}
+                    />
+                </div>
+                if let Some(total) = claimable_with_tax {
+                    <div class="adv-result">
+                        <span class="adv-result-label">{"Claimable amount (inc. tax/tip)"}</span>
+                        <span class="adv-result-value">{format!("{:.2}", total)}</span>
+                    </div>
+                }
+            }
 
             <CurrencySelector
                 value={data.currency.clone()}
