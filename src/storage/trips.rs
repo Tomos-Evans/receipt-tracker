@@ -24,7 +24,7 @@ pub async fn get_all_trips(db: &Rexie) -> AppResult<Vec<Trip>> {
         .into_iter()
         .map(from_js)
         .collect::<AppResult<Vec<_>>>()?;
-    trips.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    trips.sort_by_key(|b| std::cmp::Reverse(b.created_at));
     Ok(trips)
 }
 

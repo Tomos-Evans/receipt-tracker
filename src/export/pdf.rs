@@ -130,7 +130,7 @@ fn build_jspdf_script(
     let mut lines = Vec::new();
 
     // JS boilerplate
-    lines.push("(function() {".to_string());
+    lines.push("(async function() {".to_string());
     lines.push(
         "  if (typeof jsPDF === 'undefined' && typeof window.jspdf === 'undefined') {".to_string(),
     );
@@ -354,7 +354,7 @@ fn build_jspdf_script(
                       var _rc = document.createElement('canvas');\
                       _rc.width = _props.height; _rc.height = _props.width;\
                       var _rx = _rc.getContext('2d');\
-                      var _ri = new Image(); _ri.src = _imgData;\
+                      var _ri = await new Promise(function(res){{var i=new Image();i.onload=function(){{res(i);}};i.src=_imgData;}});\
                       _rx.translate(_rc.width / 2, _rc.height / 2);\
                       _rx.rotate(Math.PI / 2);\
                       _rx.drawImage(_ri, -_props.width / 2, -_props.height / 2);\

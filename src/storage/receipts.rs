@@ -41,7 +41,7 @@ pub async fn get_receipts_for_trip(db: &Rexie, trip_id: &str) -> AppResult<Vec<R
         .into_iter()
         .map(from_js)
         .collect::<AppResult<Vec<_>>>()?;
-    receipts.sort_by(|a, b| b.date.cmp(&a.date));
+    receipts.sort_by_key(|b| std::cmp::Reverse(b.date));
     Ok(receipts)
 }
 
